@@ -57,9 +57,9 @@ def load_and_build_graph(shp_path):
     # Attach election and population data
     for node in graph.nodes():
         row = gdf.loc[gdf.index == node].iloc[0]
-        graph.nodes[node]["population"] = int(row.get("PL10AA_TOT", 0))
-        graph.nodes[node]["votes_dem"] = int(row.get("EL08G_GV_D", 0))
-        graph.nodes[node]["votes_rep"] = int(row.get("EL08G_GV_R", 0))
+        graph.nodes[node]["population"] = int(row.get("TOTPOP", 0))
+        graph.nodes[node]["votes_dem"] = int(row.get("G24PREDHAR", 0))
+        graph.nodes[node]["votes_rep"] = int(row.get("G24PRERTRU", 0))
 
     total_pop = sum(graph.nodes[n]["population"] for n in graph.nodes())
     total_dem = sum(graph.nodes[n]["votes_dem"] for n in graph.nodes())
@@ -283,6 +283,7 @@ def main():
 
     # Try multiple possible paths for the shapefile
     possible_paths = [
+        base_dir / "new_data" / "nc_2024_with_population.shp",
         base_dir / "data" / "NC_VTD" / "NC_VTD.shp",
         base_dir.parent / "data" / "NC-shapefiles" / "NC_VTD" / "NC_VTD.shp",
         Path("../data/NC-shapefiles/NC_VTD/NC_VTD.shp")

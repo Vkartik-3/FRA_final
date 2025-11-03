@@ -8,7 +8,7 @@ import sys
 def verify_shapefile():
     """Verify the NC VTD shapefile structure"""
 
-    shapefile_path = "../data/NC-shapefiles/NC_VTD/NC_VTD.shp"
+    shapefile_path = "../new_data/nc_2024_with_population.shp"
 
     print("=" * 60)
     print("SHAPEFILE VERIFICATION")
@@ -28,7 +28,7 @@ def verify_shapefile():
 
         # Check for required election columns
         print(f"\n🗳️  Election Data Columns:")
-        required_cols = ['EL08G_GV_D', 'EL08G_GV_R', 'PL10AA_TOT']
+        required_cols = ['G24PREDHAR', 'G24PRERTRU', 'TOTPOP']
         for col in required_cols:
             if col in df.columns:
                 print(f"   ✅ {col}: Found")
@@ -41,19 +41,19 @@ def verify_shapefile():
         print(df[required_cols if all(c in df.columns for c in required_cols) else df.columns[:5]].head(3))
 
         # Summary statistics
-        if 'PL10AA_TOT' in df.columns:
+        if 'TOTPOP' in df.columns:
             print(f"\n📈 Population Statistics:")
-            print(f"   Total Population: {df['PL10AA_TOT'].sum():,}")
-            print(f"   Mean per VTD: {df['PL10AA_TOT'].mean():.0f}")
-            print(f"   Target per district (÷14): {df['PL10AA_TOT'].sum() / 14:,.0f}")
+            print(f"   Total Population: {df['TOTPOP'].sum():,}")
+            print(f"   Mean per VTD: {df['TOTPOP'].mean():.0f}")
+            print(f"   Target per district (÷14): {df['TOTPOP'].sum() / 14:,.0f}")
 
-        if 'EL08G_GV_D' in df.columns and 'EL08G_GV_R' in df.columns:
-            print(f"\n🗳️  Statewide Vote Totals:")
-            print(f"   Democratic: {df['EL08G_GV_D'].sum():,}")
-            print(f"   Republican: {df['EL08G_GV_R'].sum():,}")
-            total_votes = df['EL08G_GV_D'].sum() + df['EL08G_GV_R'].sum()
-            dem_pct = df['EL08G_GV_D'].sum() / total_votes * 100 if total_votes > 0 else 0
-            print(f"   Democratic %: {dem_pct:.1f}%")
+        if 'G24PREDHAR' in df.columns and 'G24PRERTRU' in df.columns:
+            print(f"\n🗳️  Statewide Vote Totals (2024 Presidential):")
+            print(f"   Harris (Dem): {df['G24PREDHAR'].sum():,}")
+            print(f"   Trump (Rep): {df['G24PRERTRU'].sum():,}")
+            total_votes = df['G24PREDHAR'].sum() + df['G24PRERTRU'].sum()
+            dem_pct = df['G24PREDHAR'].sum() / total_votes * 100 if total_votes > 0 else 0
+            print(f"   Harris %: {dem_pct:.1f}%")
 
         print(f"\n{'=' * 60}")
         print("✅ Verification Complete — Shapefile is ready to use")

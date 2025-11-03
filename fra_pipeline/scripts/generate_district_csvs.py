@@ -24,6 +24,7 @@ def generate_district_csvs():
 
     # Find shapefile
     possible_shp_paths = [
+        base_dir / "new_data" / "nc_2024_with_population.shp",
         base_dir / "data" / "NC_VTD" / "NC_VTD.shp",
         base_dir.parent / "data" / "NC-shapefiles" / "NC_VTD" / "NC_VTD.shp",
     ]
@@ -77,9 +78,9 @@ def generate_district_csvs():
             district_precincts = gdf[gdf.index.isin(precinct_ids)]
 
             # Aggregate votes and population
-            dem_votes = district_precincts['EL08G_GV_D'].sum()
-            rep_votes = district_precincts['EL08G_GV_R'].sum()
-            population = district_precincts['PL10AA_TOT'].sum()
+            dem_votes = district_precincts['G24PREDHAR'].sum()
+            rep_votes = district_precincts['G24PRERTRU'].sum()
+            population = district_precincts['TOTPOP'].sum()
 
             # Determine winner
             winner = 'Democrat' if dem_votes > rep_votes else 'Republican'
