@@ -1,0 +1,9 @@
+geopandas
+pandas
+shapely
+matplotlib
+pyyaml
+rtree
+networkx
+gerrychain
+streamlit
