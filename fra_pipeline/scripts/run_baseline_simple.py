@@ -122,7 +122,7 @@ def create_initial_partition(graph, num_districts=14, seed=42):
     return partition
 
 
-def generate_baseline_ensemble(graph, num_plans=10, num_districts=14, seed=42):
+def generate_baseline_ensemble(graph, num_plans=15, num_districts=14, seed=42):
     """
     Generate ensemble of random district plans using ReCom.
 
@@ -207,7 +207,7 @@ def generate_baseline_ensemble(graph, num_plans=10, num_districts=14, seed=42):
         if plan_counter % 5 == 0 or plan_counter == num_plans:
             print(f"   ✓ Generated {plan_counter}/{num_plans} plans...")
 
-    print(f"✅ Generated 10 random district plans.")
+    print(f"✅ Generated ${num_plans} random district plans.")
 
     return ensemble
 
@@ -308,7 +308,7 @@ def main():
     graph, gdf = load_and_build_graph(str(shp_path))
 
     # Generate ensemble
-    ensemble = generate_baseline_ensemble(graph, num_plans=10, num_districts=14, seed=42)
+    ensemble = generate_baseline_ensemble(graph, num_plans=15, num_districts=14, seed=42)
 
     # Save results
     save_results(ensemble, output_dir)
