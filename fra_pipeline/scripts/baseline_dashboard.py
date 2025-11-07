@@ -78,8 +78,8 @@ def create_district_map(gdf, assignment, plan_id):
     districts = sorted(gdf_plot['district'].unique())
     num_districts = len(districts)
 
-    # Use a qualitative colormap
-    cmap = plt.cm.get_cmap('tab20', num_districts)
+    # Use a qualitative colormap (updated for matplotlib 3.7+)
+    cmap = plt.colormaps.get_cmap('tab20').resampled(num_districts)
     colors = [mcolors.rgb2hex(cmap(i)) for i in range(num_districts)]
 
     # Plot each district
@@ -153,10 +153,11 @@ def main():
     st.markdown("---")
 
     # Determine paths
-    base_dir = Path(__file__).parent.parent
+    base_dir = Path(__file__).resolve().parent.parent
 
     # Try multiple possible paths for the shapefile
     possible_shp_paths = [
+        base_dir / "new_data" / "nc_2024_with_population.shp",
         base_dir / "data" / "NC_VTD" / "NC_VTD.shp",
         base_dir.parent / "data" / "NC-shapefiles" / "NC_VTD" / "NC_VTD.shp",
     ]
@@ -245,8 +246,8 @@ def main():
         summary_data = {
             "Metric": ["Dem Seats", "Rep Seats", "Total Districts", "Dem Share"],
             "Value": [
-                selected_plan['dem_seats'],
-                selected_plan['rep_seats'],
+                int(selected_plan['dem_seats']),
+                int(selected_plan['rep_seats']),
                 14,
                 f"{selected_plan['dem_seat_share']:.3f}"
             ]
@@ -292,7 +293,6 @@ def main():
 
     st.dataframe(
         display_df[['Plan ID', 'Dem Seats', 'Rep Seats', 'Dem Share %']],
-        use_container_width=True,
         hide_index=True
     )
 
