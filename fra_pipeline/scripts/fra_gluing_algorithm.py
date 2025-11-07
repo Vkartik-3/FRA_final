@@ -575,71 +575,46 @@ def save_fra_results(super_districts_data, output_path):
 # MAIN EXECUTION
 # ============================================================================
 
-def main():
+def process_single_plan(plan_num, gdf, precinct_adj, base_dir, target_sizes, num_districts):
     """
-    Main execution function.
+    Process a single baseline plan through the FRA gluing algorithm.
 
-    Steps:
-    1. Load NC 2024 precinct shapefile
-    2. Load baseline district plan
-    3. Build precinct adjacency graph
-    4. Build district adjacency graph
-    5. Run gluing algorithm (5-5-4 pattern)
-    6. Aggregate votes by super-district
-    7. Allocate seats proportionally
-    8. Save outputs (JSON + CSV)
+    Args:
+        plan_num: Plan number (1-15)
+        gdf: GeoDataFrame with precinct data
+        precinct_adj: Precinct adjacency graph
+        base_dir: Base directory path
+        target_sizes: List of super-district sizes [5, 5, 4]
+        num_districts: Total number of districts (14)
+
+    Returns:
+        Dictionary with results for this plan
     """
+    print(f"\n{'='*70}")
+    print(f"PROCESSING PLAN {plan_num}")
+    print(f"{'='*70}")
 
-    # ========================================================================
-    # CONFIGURATION
-    # ========================================================================
-
-    # Paths (adjust as needed)
-    script_dir = Path(__file__).parent
-    base_dir = script_dir.parent
-
-    # Input files
-    shp_path = base_dir / "new_data" / "nc_2024_with_population.shp"
-    plan_path = base_dir / "outputs" / "plan_assignments" / "plan_1.json"
-
-    # Output files
+    # Input/output paths
+    plan_path = base_dir / "outputs" / "plan_assignments" / f"plan_{plan_num}.json"
     output_dir = base_dir / "outputs" / "fra"
-    superdistrict_assignment_path = output_dir / "superdistrict_assignment.json"
-    fra_results_path = output_dir / "fra_results.csv"
+    superdistrict_assignment_path = output_dir / f"superdistrict_assignment_{plan_num}.json"
+    fra_results_path = output_dir / f"fra_results_{plan_num}.csv"
 
-    # FRA configuration
-    target_sizes = [5, 5, 4]  # Three super-districts with 5, 5, and 4 seats
-    num_districts = 14  # Total single-member districts in baseline
-
-    # ========================================================================
-    # STEP 1: LOAD DATA
-    # ========================================================================
-
-    gdf = load_shapefile(shp_path)
+    # Load baseline plan
     assignment = load_baseline_plan(plan_path, gdf)
 
-    # ========================================================================
-    # STEP 2: BUILD GRAPHS
-    # ========================================================================
-
-    precinct_adj = build_precinct_adjacency(gdf)
+    # Build district adjacency
     district_adj = build_district_adjacency(precinct_adj, assignment)
 
-    # ========================================================================
-    # STEP 3: RUN GLUING ALGORITHM
-    # ========================================================================
-
+    # Run gluing algorithm
     district_to_super = glue_districts_greedy(
         district_adj,
         target_sizes,
         num_districts,
-        seed=42
+        seed=42 + plan_num  # Different seed for each plan
     )
 
-    # ========================================================================
-    # STEP 4: AGGREGATE AND ALLOCATE
-    # ========================================================================
-
+    # Aggregate and allocate
     super_districts_data = aggregate_precincts_to_superdistricts(
         gdf,
         assignment,
@@ -651,10 +626,7 @@ def main():
         target_sizes
     )
 
-    # ========================================================================
-    # STEP 5: SAVE OUTPUTS
-    # ========================================================================
-
+    # Save outputs
     save_superdistrict_assignment(
         assignment,
         district_to_super,
@@ -666,27 +638,145 @@ def main():
         fra_results_path
     )
 
+    # Return summary
+    total_dem_seats = results_df['dem_seats'].sum()
+    total_rep_seats = results_df['rep_seats'].sum()
+
+    return {
+        'plan_num': plan_num,
+        'dem_seats': total_dem_seats,
+        'rep_seats': total_rep_seats,
+        'results_df': results_df
+    }
+
+
+def main():
+    """
+    Main execution function - processes ALL baseline plans.
+
+    Steps:
+    1. Load NC 2024 precinct shapefile (once)
+    2. Build precinct adjacency graph (once)
+    3. For each of 15 baseline plans:
+       a. Load baseline plan
+       b. Build district adjacency
+       c. Run gluing algorithm
+       d. Aggregate votes by super-district
+       e. Allocate seats proportionally
+       f. Save outputs
+    4. Print summary of all plans
+    """
+
+    # ========================================================================
+    # CONFIGURATION
+    # ========================================================================
+
+    # Paths
+    script_dir = Path(__file__).parent
+    base_dir = script_dir.parent
+
+    # Input files
+    shp_path = base_dir / "new_data" / "nc_2024_with_population.shp"
+    plan_dir = base_dir / "outputs" / "plan_assignments"
+
+    # Output directory
+    output_dir = base_dir / "outputs" / "fra"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # FRA configuration
+    target_sizes = [5, 5, 4]  # Three super-districts with 5, 5, and 4 seats
+    num_districts = 14  # Total single-member districts in baseline
+    num_plans = 15  # Total number of baseline plans to process
+
+    # ========================================================================
+    # STEP 1: LOAD SHAPEFILE (ONCE)
+    # ========================================================================
+
+    gdf = load_shapefile(shp_path)
+
+    # ========================================================================
+    # STEP 2: BUILD PRECINCT ADJACENCY (ONCE)
+    # ========================================================================
+
+    precinct_adj = build_precinct_adjacency(gdf)
+
+    # ========================================================================
+    # STEP 3: PROCESS ALL 15 BASELINE PLANS
+    # ========================================================================
+
+    print(f"\n{'='*70}")
+    print(f"PROCESSING {num_plans} BASELINE PLANS")
+    print(f"{'='*70}")
+
+    all_results = []
+
+    for plan_num in range(1, num_plans + 1):
+        try:
+            result = process_single_plan(
+                plan_num,
+                gdf,
+                precinct_adj,
+                base_dir,
+                target_sizes,
+                num_districts
+            )
+            all_results.append(result)
+
+            print(f"\n✓ Plan {plan_num} complete:")
+            print(f"  - Dem seats: {result['dem_seats']}/14")
+            print(f"  - Rep seats: {result['rep_seats']}/14")
+
+        except Exception as e:
+            print(f"\n❌ Plan {plan_num} failed: {e}")
+            continue
+
     # ========================================================================
     # FINAL SUMMARY
     # ========================================================================
 
     print("\n" + "=" * 70)
-    print("FRA GLUING ALGORITHM COMPLETE")
+    print("FRA GLUING ALGORITHM - ALL PLANS COMPLETE")
     print("=" * 70)
-    print(f"\nOutputs saved to: {output_dir}")
-    print(f"  - {superdistrict_assignment_path.name}")
-    print(f"  - {fra_results_path.name}")
+    print(f"\nSuccessfully processed {len(all_results)}/{num_plans} plans")
+    print(f"\nOutputs saved to: {output_dir}/")
+    print(f"  - superdistrict_assignment_1.json through superdistrict_assignment_15.json")
+    print(f"  - fra_results_1.csv through fra_results_15.csv")
 
-    print("\n📊 FRA Results Summary:")
-    print(results_df.to_string(index=False))
+    # Summary statistics
+    print("\n📊 SUMMARY ACROSS ALL PLANS:")
+    print("-" * 70)
+    print(f"{'Plan':<6} {'Dem Seats':<12} {'Rep Seats':<12} {'Dem %':<10}")
+    print("-" * 70)
 
-    total_dem_seats = results_df['dem_seats'].sum()
-    total_rep_seats = results_df['rep_seats'].sum()
-    total_seats = results_df['total_seats'].sum()
+    for result in all_results:
+        dem_seats = result['dem_seats']
+        rep_seats = result['rep_seats']
+        dem_pct = dem_seats / 14 * 100
 
-    print(f"\n🗳️  Total Seats:")
-    print(f"  - Democratic: {total_dem_seats}/{total_seats} ({total_dem_seats/total_seats:.1%})")
-    print(f"  - Republican: {total_rep_seats}/{total_seats} ({total_rep_seats/total_seats:.1%})")
+        print(f"{result['plan_num']:<6} {dem_seats:<12} {rep_seats:<12} {dem_pct:<10.1f}%")
+
+    print("-" * 70)
+
+    # Average seat allocation
+    avg_dem = sum(r['dem_seats'] for r in all_results) / len(all_results)
+    avg_rep = sum(r['rep_seats'] for r in all_results) / len(all_results)
+
+    print(f"\n🗳️  AVERAGE SEAT ALLOCATION:")
+    print(f"  - Democratic: {avg_dem:.1f}/14 ({avg_dem/14:.1%})")
+    print(f"  - Republican: {avg_rep:.1f}/14 ({avg_rep/14:.1%})")
+
+    # Seat distribution
+    dem_seat_counts = {}
+    for result in all_results:
+        count = result['dem_seats']
+        dem_seat_counts[count] = dem_seat_counts.get(count, 0) + 1
+
+    print(f"\n📈 DEMOCRATIC SEAT DISTRIBUTION:")
+    for seats in sorted(dem_seat_counts.keys()):
+        count = dem_seat_counts[seats]
+        pct = count / len(all_results) * 100
+        bar = "█" * int(pct / 5)
+        print(f"  {seats} seats: {count:>2} plans ({pct:>5.1f}%) {bar}")
 
     print("\n" + "=" * 70)
     print("✅ All steps completed successfully!")

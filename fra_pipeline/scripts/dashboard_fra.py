@@ -447,36 +447,70 @@ def main():
     """Main dashboard application."""
 
     # ========================================================================
-    # HEADER
-    # ========================================================================
-
-    st.title("🗳️ Fair Representation Act Dashboard")
-    st.markdown("### North Carolina 2024 - FRA Multi-Member Districts")
-    st.markdown("---")
-
-    # ========================================================================
-    # LOAD DATA
+    # INITIAL SETUP - CHECK AVAILABLE PLANS
     # ========================================================================
 
     # File paths - resolve to absolute paths
     base_dir = Path(__file__).resolve().parent.parent
     shp_path = base_dir / "new_data" / "nc_2024_with_population.shp"
-    fra_path = base_dir / "outputs" / "fra" / "superdistrict_assignment.json"
-    fra_results_path = base_dir / "outputs" / "fra" / "fra_results.csv"
+    fra_dir = base_dir / "outputs" / "fra"
 
-    # Verify files exist
+    # Verify shapefile exists
     if not shp_path.exists():
         st.error(f"❌ Shapefile not found: {shp_path}")
         st.stop()
-    if not fra_path.exists():
-        st.error(f"❌ FRA assignment not found: {fra_path}")
-        st.stop()
-    if not fra_results_path.exists():
-        st.error(f"❌ FRA results not found: {fra_results_path}")
+
+    # Check how many FRA plans are available
+    fra_plans_available = []
+    for i in range(1, 16):  # Check for plans 1-15
+        fra_path = fra_dir / f"superdistrict_assignment_{i}.json"
+        fra_results_path = fra_dir / f"fra_results_{i}.csv"
+        if fra_path.exists() and fra_results_path.exists():
+            fra_plans_available.append(i)
+
+    if not fra_plans_available:
+        st.error(f"❌ No FRA plans found in {fra_dir}")
+        st.info("💡 Run the FRA gluing algorithm first: `python scripts/fra_gluing_algorithm.py`")
         st.stop()
 
+    # ========================================================================
+    # SIDEBAR - PLAN SELECTION
+    # ========================================================================
+
+    st.sidebar.title("⚙️ FRA Dashboard Controls")
+
+    st.sidebar.markdown("### 📋 Plan Selection")
+
+    # Plan selector
+    selected_plan = st.sidebar.selectbox(
+        "Select FRA Plan:",
+        options=fra_plans_available,
+        format_func=lambda x: f"FRA Plan {x}",
+        help=f"Choose from {len(fra_plans_available)} available FRA plans"
+    )
+
+    st.sidebar.markdown(f"*Viewing FRA Plan {selected_plan} (from Baseline Plan {selected_plan})*")
+    st.sidebar.markdown("---")
+
+    # ========================================================================
+    # HEADER
+    # ========================================================================
+
+    st.title("🗳️ Fair Representation Act Dashboard")
+    st.markdown(f"### North Carolina 2024 - FRA Plan {selected_plan}")
+    st.caption(f"Viewing FRA super-districts generated from Baseline Plan {selected_plan}")
+    st.markdown("---")
+
+    # ========================================================================
+    # LOAD DATA FOR SELECTED PLAN
+    # ========================================================================
+
+    # Load selected plan
+    fra_path = fra_dir / f"superdistrict_assignment_{selected_plan}.json"
+    fra_results_path = fra_dir / f"fra_results_{selected_plan}.csv"
+
     # Load data with spinner
-    with st.spinner('Loading data...'):
+    with st.spinner(f'Loading FRA Plan {selected_plan}...'):
         gdf = load_precinct_shapefile(str(shp_path))
         fra_assignment = load_fra_plan(str(fra_path))
         fra_results = load_fra_results(str(fra_results_path))
@@ -485,10 +519,8 @@ def main():
         statewide = compute_statewide_totals(gdf)
 
     # ========================================================================
-    # SIDEBAR
+    # SIDEBAR - SUPER-DISTRICT SELECTION
     # ========================================================================
-
-    st.sidebar.title("⚙️ FRA Dashboard Controls")
 
     st.sidebar.markdown("### 🗺️ Super-District Explorer")
 
