@@ -3,7 +3,9 @@
     "allow": [
       "Bash(source env/bin/activate)",
       "Bash(python:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(find:*)",
+      "Bash(sort:*)"
     ],
     "deny": [],
     "ask": []
