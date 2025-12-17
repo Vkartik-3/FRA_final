@@ -94,9 +94,31 @@ def main():
     st.markdown("### Exploring Random Single-Member District Plans")
     st.markdown("---")
 
-    # Determine paths
-    base_dir = Path(__file__).parent.parent
+    # Determine paths - use multiple fallback methods
+    script_path = Path(__file__).resolve()
+    base_dir = script_path.parent.parent
+
+    # Fallback: try to find the outputs directory
     csv_path = base_dir / "outputs" / "baseline_ensemble.csv"
+
+    # If not found, try current working directory
+    if not csv_path.exists():
+        cwd = Path.cwd()
+        # Check if we're in fra_pipeline
+        if (cwd / "outputs" / "baseline_ensemble.csv").exists():
+            base_dir = cwd
+            csv_path = base_dir / "outputs" / "baseline_ensemble.csv"
+        # Check if we're in fra_pipeline/scripts
+        elif (cwd.parent / "outputs" / "baseline_ensemble.csv").exists():
+            base_dir = cwd.parent
+            csv_path = base_dir / "outputs" / "baseline_ensemble.csv"
+        # Try absolute path as last resort
+        else:
+            abs_path = Path("/Users/kartikvadhawana/Desktop/FRA/NEWFINALFRA/fra_pipeline")
+            if (abs_path / "outputs" / "baseline_ensemble.csv").exists():
+                base_dir = abs_path
+                csv_path = base_dir / "outputs" / "baseline_ensemble.csv"
+
     outputs_dir = base_dir / "outputs"
 
     # Check if results exist
@@ -122,7 +144,7 @@ def main():
     st.sidebar.header("📋 Select Plan")
 
     plan_id = st.sidebar.number_input(
-        "Plan ID (0-9):",
+        "Plan ID (0-999):",
         min_value=int(results_df['plan_id'].min()),
         max_value=int(results_df['plan_id'].max()),
         value=int(results_df['plan_id'].min()),
@@ -216,11 +238,11 @@ def main():
         if all(col in district_df.columns for col in display_cols):
             st.dataframe(
                 district_df[display_cols].sort_values('district_id'),
-                use_container_width=True,
+                width='stretch',
                 hide_index=True
             )
         else:
-            st.dataframe(district_df, use_container_width=True, hide_index=True)
+            st.dataframe(district_df, width='stretch', hide_index=True)
 
         # Summary statistics
         col_a, col_b = st.columns(2)
@@ -285,7 +307,7 @@ def main():
 
     st.dataframe(
         display_df[display_cols],
-        use_container_width=True,
+        width='stretch',
         hide_index=True
     )
 

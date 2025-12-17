@@ -18,6 +18,7 @@ from gerrychain.accept import always_accept
 from gerrychain.updaters import Tally
 from gerrychain.tree import recursive_tree_part
 from functools import partial
+from tqdm import tqdm
 
 
 def load_and_build_graph(shp_path):
@@ -122,7 +123,7 @@ def create_initial_partition(graph, num_districts=14, seed=42):
     return partition
 
 
-def generate_baseline_ensemble(graph, num_plans=15, num_districts=14, seed=42):
+def generate_baseline_ensemble(graph, num_plans=1000, num_districts=14, seed=42):
     """
     Generate ensemble of random district plans using ReCom.
 
@@ -166,12 +167,13 @@ def generate_baseline_ensemble(graph, num_plans=15, num_districts=14, seed=42):
 
     # Generate plans
     print(f"\n🚀 Generating {num_plans} random district plans...")
-    print("   (This may take a minute...)")
+    print("   (This may take 1-2 hours for 1000 plans...)")
 
     ensemble = []
     plan_counter = 0
 
-    for partition in chain:
+    # Use tqdm progress bar
+    for partition in tqdm(chain, total=num_plans, desc="Generating plans", unit="plan"):
         plan_counter += 1
 
         # Calculate election results for this plan
@@ -204,10 +206,7 @@ def generate_baseline_ensemble(graph, num_plans=15, num_districts=14, seed=42):
             "assignment": assignment
         })
 
-        if plan_counter % 5 == 0 or plan_counter == num_plans:
-            print(f"   ✓ Generated {plan_counter}/{num_plans} plans...")
-
-    print(f"✅ Generated ${num_plans} random district plans.")
+    print(f"\n✅ Generated {num_plans} random district plans.")
 
     return ensemble
 
@@ -253,7 +252,7 @@ def save_results(ensemble, output_dir):
     plt.hist(results_df["dem_seat_share"], bins=10, edgecolor='black', alpha=0.7, color='steelblue')
     plt.xlabel("Democratic Seat Share", fontsize=12)
     plt.ylabel("Frequency", fontsize=12)
-    plt.title("Baseline Ensemble: Democratic Seat Share Distribution\n(10 Random District Plans)", fontsize=14, fontweight='bold')
+    plt.title(f"Baseline Ensemble: Democratic Seat Share Distribution\n({len(ensemble)} Random District Plans)", fontsize=14, fontweight='bold')
     plt.axvline(results_df["dem_seat_share"].mean(), color='red', linestyle='--',
                 linewidth=2, label=f"Mean: {results_df['dem_seat_share'].mean():.3f}")
     plt.legend(fontsize=11)
@@ -308,7 +307,7 @@ def main():
     graph, gdf = load_and_build_graph(str(shp_path))
 
     # Generate ensemble
-    ensemble = generate_baseline_ensemble(graph, num_plans=15, num_districts=14, seed=42)
+    ensemble = generate_baseline_ensemble(graph, num_plans=1000, num_districts=14, seed=42)
 
     # Save results
     save_results(ensemble, output_dir)

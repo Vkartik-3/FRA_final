@@ -7,8 +7,6 @@ This Streamlit dashboard visualizes the Fair Representation Act (FRA) super-dist
 - Each super-district allocates seats proportionally to vote share
 - Total of 14 seats across North Carolina
 
-Author: Claude Code
-Date: 2025
 """
 
 import streamlit as st
@@ -460,9 +458,9 @@ def main():
         st.error(f"❌ Shapefile not found: {shp_path}")
         st.stop()
 
-    # Check how many FRA plans are available
+    # Check how many FRA plans are available (up to 1000)
     fra_plans_available = []
-    for i in range(1, 16):  # Check for plans 1-15
+    for i in range(1, 1001):  # Check for plans 1-1000
         fra_path = fra_dir / f"superdistrict_assignment_{i}.json"
         fra_results_path = fra_dir / f"fra_results_{i}.csv"
         if fra_path.exists() and fra_results_path.exists():
@@ -481,15 +479,25 @@ def main():
 
     st.sidebar.markdown("### 📋 Plan Selection")
 
-    # Plan selector
-    selected_plan = st.sidebar.selectbox(
-        "Select FRA Plan:",
-        options=fra_plans_available,
-        format_func=lambda x: f"FRA Plan {x}",
-        help=f"Choose from {len(fra_plans_available)} available FRA plans"
-    )
+    # Plan selector - use number input for large number of plans
+    if len(fra_plans_available) > 50:
+        selected_plan = st.sidebar.number_input(
+            f"Select FRA Plan (1-{len(fra_plans_available)}):",
+            min_value=min(fra_plans_available),
+            max_value=max(fra_plans_available),
+            value=min(fra_plans_available),
+            step=1,
+            help=f"Choose from {len(fra_plans_available)} available FRA plans"
+        )
+    else:
+        selected_plan = st.sidebar.selectbox(
+            "Select FRA Plan:",
+            options=fra_plans_available,
+            format_func=lambda x: f"FRA Plan {x}",
+            help=f"Choose from {len(fra_plans_available)} available FRA plans"
+        )
 
-    st.sidebar.markdown(f"*Viewing FRA Plan {selected_plan} (from Baseline Plan {selected_plan})*")
+    st.sidebar.markdown(f"*Viewing FRA Plan {selected_plan} of {len(fra_plans_available)} total*")
     st.sidebar.markdown("---")
 
     # ========================================================================
@@ -743,7 +751,7 @@ def main():
     # ========================================================================
 
     st.caption("Built with Streamlit • Data: NC 2024 Presidential Election (precinct-level)")
-    st.caption("Generated with Claude Code")
+    
 
 
 # ============================================================================

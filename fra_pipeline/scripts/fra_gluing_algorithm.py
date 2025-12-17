@@ -20,6 +20,21 @@ import geopandas as gpd
 from pathlib import Path
 from collections import defaultdict, deque
 import random
+import sys
+import os
+from tqdm import tqdm
+from contextlib import contextmanager
+
+@contextmanager
+def suppress_stdout():
+    """Context manager to suppress stdout output."""
+    with open(os.devnull, 'w') as devnull:
+        old_stdout = sys.stdout
+        sys.stdout = devnull
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout
 
 
 # ============================================================================
@@ -575,24 +590,26 @@ def save_fra_results(super_districts_data, output_path):
 # MAIN EXECUTION
 # ============================================================================
 
-def process_single_plan(plan_num, gdf, precinct_adj, base_dir, target_sizes, num_districts):
+def process_single_plan(plan_num, gdf, precinct_adj, base_dir, target_sizes, num_districts, verbose=False):
     """
     Process a single baseline plan through the FRA gluing algorithm.
 
     Args:
-        plan_num: Plan number (1-15)
+        plan_num: Plan number (1-1000)
         gdf: GeoDataFrame with precinct data
         precinct_adj: Precinct adjacency graph
         base_dir: Base directory path
         target_sizes: List of super-district sizes [5, 5, 4]
         num_districts: Total number of districts (14)
+        verbose: Whether to print detailed progress
 
     Returns:
         Dictionary with results for this plan
     """
-    print(f"\n{'='*70}")
-    print(f"PROCESSING PLAN {plan_num}")
-    print(f"{'='*70}")
+    if verbose:
+        print(f"\n{'='*70}")
+        print(f"PROCESSING PLAN {plan_num}")
+        print(f"{'='*70}")
 
     # Input/output paths
     plan_path = base_dir / "outputs" / "plan_assignments" / f"plan_{plan_num}.json"
@@ -686,7 +703,7 @@ def main():
     # FRA configuration
     target_sizes = [5, 5, 4]  # Three super-districts with 5, 5, and 4 seats
     num_districts = 14  # Total single-member districts in baseline
-    num_plans = 15  # Total number of baseline plans to process
+    num_plans = 1000  # Total number of baseline plans to process
 
     # ========================================================================
     # STEP 1: LOAD SHAPEFILE (ONCE)
@@ -709,26 +726,34 @@ def main():
     print(f"{'='*70}")
 
     all_results = []
+    failed_plans = []
 
-    for plan_num in range(1, num_plans + 1):
+    # Use tqdm progress bar for processing plans
+    # Suppress verbose output from individual plan processing
+    for plan_num in tqdm(range(1, num_plans + 1), desc="Processing FRA plans", unit="plan"):
         try:
-            result = process_single_plan(
-                plan_num,
-                gdf,
-                precinct_adj,
-                base_dir,
-                target_sizes,
-                num_districts
-            )
+            with suppress_stdout():
+                result = process_single_plan(
+                    plan_num,
+                    gdf,
+                    precinct_adj,
+                    base_dir,
+                    target_sizes,
+                    num_districts
+                )
             all_results.append(result)
 
-            print(f"\n✓ Plan {plan_num} complete:")
-            print(f"  - Dem seats: {result['dem_seats']}/14")
-            print(f"  - Rep seats: {result['rep_seats']}/14")
-
         except Exception as e:
-            print(f"\n❌ Plan {plan_num} failed: {e}")
+            failed_plans.append((plan_num, str(e)))
             continue
+
+    # Report any failures
+    if failed_plans:
+        print(f"\n⚠️  {len(failed_plans)} plans failed:")
+        for plan_num, error in failed_plans[:5]:  # Show first 5 failures
+            print(f"  - Plan {plan_num}: {error}")
+        if len(failed_plans) > 5:
+            print(f"  ... and {len(failed_plans) - 5} more")
 
     # ========================================================================
     # FINAL SUMMARY
@@ -739,21 +764,36 @@ def main():
     print("=" * 70)
     print(f"\nSuccessfully processed {len(all_results)}/{num_plans} plans")
     print(f"\nOutputs saved to: {output_dir}/")
-    print(f"  - superdistrict_assignment_1.json through superdistrict_assignment_15.json")
-    print(f"  - fra_results_1.csv through fra_results_15.csv")
+    print(f"  - superdistrict_assignment_1.json through superdistrict_assignment_{num_plans}.json")
+    print(f"  - fra_results_1.csv through fra_results_{num_plans}.csv")
 
-    # Summary statistics
+    # Summary statistics - only show first and last few if many plans
     print("\n📊 SUMMARY ACROSS ALL PLANS:")
     print("-" * 70)
     print(f"{'Plan':<6} {'Dem Seats':<12} {'Rep Seats':<12} {'Dem %':<10}")
     print("-" * 70)
 
-    for result in all_results:
-        dem_seats = result['dem_seats']
-        rep_seats = result['rep_seats']
-        dem_pct = dem_seats / 14 * 100
-
-        print(f"{result['plan_num']:<6} {dem_seats:<12} {rep_seats:<12} {dem_pct:<10.1f}%")
+    # Show first 5, last 5, or all if <= 20 plans
+    if len(all_results) <= 20:
+        for result in all_results:
+            dem_seats = result['dem_seats']
+            rep_seats = result['rep_seats']
+            dem_pct = dem_seats / 14 * 100
+            print(f"{result['plan_num']:<6} {dem_seats:<12} {rep_seats:<12} {dem_pct:<10.1f}%")
+    else:
+        # Show first 5
+        for result in all_results[:5]:
+            dem_seats = result['dem_seats']
+            rep_seats = result['rep_seats']
+            dem_pct = dem_seats / 14 * 100
+            print(f"{result['plan_num']:<6} {dem_seats:<12} {rep_seats:<12} {dem_pct:<10.1f}%")
+        print(f"{'...':<6} {'...':<12} {'...':<12} {'...':<10}")
+        # Show last 5
+        for result in all_results[-5:]:
+            dem_seats = result['dem_seats']
+            rep_seats = result['rep_seats']
+            dem_pct = dem_seats / 14 * 100
+            print(f"{result['plan_num']:<6} {dem_seats:<12} {rep_seats:<12} {dem_pct:<10.1f}%")
 
     print("-" * 70)
 

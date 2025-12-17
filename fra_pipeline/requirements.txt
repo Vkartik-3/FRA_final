@@ -7,3 +7,4 @@ rtree
 networkx
 gerrychain
 streamlit
+tqdm
