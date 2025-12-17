@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(python -c:*)",
+      "Bash(python test_verification.py:*)"
+    ]
+  }
+}
