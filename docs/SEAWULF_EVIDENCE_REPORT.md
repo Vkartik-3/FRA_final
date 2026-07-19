@@ -285,8 +285,11 @@ Ran locally (`docs/evidence/Mac_dashboard_benchmark.json`), 5 reps, plan 1:
 
 1. ~~Run the full 100-task, 10,000-plan production array~~ **DONE** — see §7a
    (`bench10k/`): 4.09×, 617s→151s, 37–38 nodes, 300/300 tasks, 0 failures.
-2. Time the **original local serial** path on the machine that produced "4 hours" → validates the
-   13× denominator (or restate it). Still outstanding.
+2. **13× — PENDING local-laptop timing.** Time the original local serial path on the machine that
+   produced "4 hours" using `experiments/local_serial_benchmark.sh` (see
+   `experiments/LOCAL_BASELINE.md`). This is the ONLY missing evidence for the 13× claim; it
+   cannot come from the cluster. Until that raw log exists in `docs/evidence/local/`, 13× stays
+   **historical/unresolved** and the defensible measured number is **4.09×** (§7a).
 3. Add a **dashboard load-time harness** (cold vs warm cache, N reps) → replaces "10s → <1s".
 4. Count **polygon components** after dissolve (`.explode()`) → confirm the real shape count vs
    "~50"; likely it's 3 dissolved districts made of multiple polygon parts.
