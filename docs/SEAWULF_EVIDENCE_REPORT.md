@@ -1,10 +1,16 @@
 # SeaWulf Evidence Report
 
-Evidence basis: `docs/evidence/seawulf/` on branch `chore/repo-reorg`, benchmark commit
-`c19c06e`, plus repository documentation. All numbers below are read from raw artifacts
-(`sacct_*.txt`, `BENCHMARK_RESULTS.json`, `CLUSTER_CAPACITY.txt`, `ENV.txt`, sbatch files).
-Every claim is classified into one of six evidence categories and these categories are kept
-separate. "Not reproduced here" is distinguished from "unsupported" and from "contradicted."
+Evidence basis: `docs/evidence/seawulf/` on branch `chore/repo-reorg`, plus repository
+documentation. All numbers below are read from raw artifacts (`sacct_*.txt`, `*SUMMARY.json`,
+`CLUSTER_CAPACITY.txt`, `ENV.txt`, sbatch files) and independently re-derived. Every claim is
+classified into one of six evidence categories and these categories are kept separate.
+"Not reproduced here" is distinguished from "unsupported" and from "contradicted."
+
+**Two controlled benchmarks now exist — DO NOT merge them:**
+- **10,000-plan (production-scale, PRIMARY):** median serial 617 s → parallel 151 s,
+  **4.0861× speedup**, 37–38 distinct nodes/rep, 300/300 tasks COMPLETED, 0 failed
+  (`docs/evidence/seawulf/bench10k/`). See §7a.
+- **1,000-plan (earlier controlled run):** 87 s → 36 s, 2.4167×, 10 nodes/rep (§7).
 
 **Evidence categories**
 1. Reproduced in the current SeaWulf benchmark
@@ -42,7 +48,7 @@ capture time). Node states: 98 allocated / 43 idle / 15 other of 156.
 |---|---|---|
 | Official SeaWulf full-cluster capacity | ~23,000 cores, ~400+ nodes (all HW generations) | Project docs citing SeaWulf specs (Cat 3) — NOT visible in this account's `sinfo` |
 | Account-visible partitions | 156 nodes / 4,368 cores (28-core partitions) | `CLUSTER_CAPACITY.txt` (Cat 1) |
-| Resources used by THIS benchmark | 10 distinct nodes, 1 core used/task (28 alloc/task) | `sacct_*`, `distinct_nodes_69964.txt` (Cat 1) |
+| Resources used by the benchmarks | 10k run: 37–38 distinct nodes/rep; 1k run: 10 nodes/rep (1 core used/task) | `distinct_nodes_7001*.txt`, `distinct_nodes_69964.txt` (Cat 1) |
 
 The account-visible 156-node view is a **subset** of the official cluster; the 23,000-core /
 400+-node figures describe the whole machine across hardware generations not exposed to this
@@ -112,6 +118,30 @@ correct, defensible result for this workload size — not a failure.
 | MaxRSS/task | ~0.45–0.50 G | sacct |
 | Fixed per-job overhead | ~28–30 s | scaling tests |
 
+## 7a. 10,000-plan production-scale benchmark (PRIMARY — Category 1, reproduced)
+
+Source: `docs/evidence/seawulf/bench10k/`. Independently re-derived from raw `sacct` (not just
+`BENCH10K_SUMMARY.json`). Method identical to §6: serial = one 10,000-plan process on one node;
+parallel = `--array=1-100`, 100 plans/task = 10,000 plans; 3 reps each; queue wait excluded;
+parallel wall = earliest task Start → latest task End; same commit + input held constant.
+
+| Metric | Value | Source (verified) |
+|---|---|---|
+| Workload | 10,000 baseline MCMC plans | `experiments/serial_10000.sbatch`, `parallel_10000.sbatch` |
+| Serial wall (3 reps) | 629, 616, 617 s → **median 617 s (10 m 17 s)** | `sacct_serial_70002/70115/70216.txt` (all COMPLETED, exit 0:0, node sn060) |
+| Parallel wall (3 reps) | 158, 150, 151 s → **median 151 s (2 m 31 s)** | `sacct_parallel_70011/70116/70217.txt` (first Start → last End) |
+| **Median speedup** | **617 / 151 = 4.0861×** | derived |
+| Serial jobs completed | 3 / 3 | sacct |
+| Parallel tasks completed | **300 / 300** | `task_states_70011/70116/70217.txt`, direct count 100 each |
+| Failed tasks | **0** | all `COMPLETED`, ExitCode 0:0 |
+| Distinct physical nodes/rep | **38, 37, 37** (union 38) | `distinct_nodes_7001*.txt` (`wc -l`) |
+| Tasks per rep | 100 tasks × 100 plans | sbatch array config |
+
+**Scope note:** 100 array tasks landed on 37–38 *distinct physical nodes* (SLURM packed
+multiple tasks per node). Report 37–38 nodes, never "100 nodes." The 4.09× is larger than the
+1,000-plan 2.42× because at 10k the marginal per-plan work grows relative to the fixed ~30 s
+per-job overhead, so parallelization pays off more — consistent with the §5 overhead signature.
+
 ## 8. Historical project metrics found in the repository
 
 These are authored project records (Category 2) and/or configuration (Category 4), **not**
@@ -149,12 +179,13 @@ account-subset-visible.
 
 | Component | Category | Source | Verdict |
 |---|---|---|---|
-| Python + SLURM parallelization | 1 + 4 | sbatch files, benchmark sacct | **Fully supported** |
-| 10,000+ runs | 2 + 4 | README, HPC doc, `--array=1-100`×100 | **Config+records supported; no completed-run log** |
-| 23,000-core cluster | 3 | project docs citing SeaWulf | **Supported as cluster capacity (not project usage)** |
-| 400+ nodes | 3 | HPC doc | **Cluster capacity; benchmark used 10 nodes** |
-| 4h → 18 min | 2 / 5 | HPC doc (local 4h+, SeaWulf 18 min) | **Project-record supported; NOT independently measured; no raw timing log** |
-| 13× | 2 / 5 | derived from 4h/18min in docs | **Historical/plausible; not reproduced. Controlled benchmark measured 2.42× at 1,000-plan scale (different scope)** |
+| Python + SLURM parallelization | 1 (reproduced) | sbatch files, bench10k sacct | **Fully supported** |
+| 10,000+ runs | 1 (reproduced) | `bench10k/` — 3 reps × 10,000 plans, 300/300 tasks | **Now REPRODUCED and supported** (was config-only) |
+| Parallel speedup | 1 (reproduced) | bench10k sacct | **4.0861× measured (617 s → 151 s), 10k scale.** NOT 13×. |
+| 23,000-core cluster | 3 | project docs citing SeaWulf | **Retain only as official cluster capacity, not project usage** |
+| 400+ nodes | 3 vs 1 | HPC doc vs `distinct_nodes_*` | **Cluster capacity claim (Cat 3); measured usage = 37–38 nodes/rep. Do NOT claim 400+ as project usage** |
+| 4h → 18 min | 2 / 5 | HPC doc (local 4h+, SeaWulf 18 min) | **Historical project record only; NOT reproduced; no raw local-4h or 10k-18min log. Retain only if separate historical evidence exists** |
+| 13× | 2 / 5 | derived from 4h/18min in docs | **Historical/unresolved; NOT reproduced. Measured production-scale result is 4.09× (10k) / 2.42× (1k). Do not call the measured run 13×** |
 
 Not contradicted: the 2.42× (1,000 plans, fast 28-core serial baseline, 10 nodes) and the
 historical 13× (10,000 plans, slow local 4h baseline) are **different workloads and different
@@ -195,54 +226,67 @@ Ran locally (`docs/evidence/Mac_dashboard_benchmark.json`), 5 reps, plan 1:
 
 ## 15. Benchmark limitations and caveats
 
-- Benchmark scale is **1,000 plans**, not 10,000; speedup is scale-dependent (fixed overhead
-  dominates), so 2.42× should not be extrapolated to the 10k production scope.
-- Serial arm ran on a **fast 28-core SeaWulf node**, not the original "local" machine that
-  produced the historical 4-hour figure; the two serial baselines are different hardware.
-- Parallelism was 10 nodes; the production config is 100 tasks. Speedup at 100-way parallelism
-  was not measured.
-- No completed 10,000-plan run log; no dashboard load-time measurement; no crash incident log.
-- `sinfo` capture had all GPU partitions DOWN and shows only the account's 28-core partitions.
+- The **serial arm ran on a fast 28-core SeaWulf node**, not the original "local" machine that
+  produced the historical 4-hour figure. The measured 4.09× (and 2.42× at 1k) is a
+  **cluster-serial vs cluster-parallel** result, NOT the historical laptop→cluster comparison.
+- **4.09× (10k) and 2.42× (1k) are different-scope results** — the speedup grows with scale as
+  marginal per-plan work overtakes the ~30 s fixed per-job overhead. Do not merge them, and do
+  not extrapolate either to "13×".
+- 100 array tasks ran on **37–38 distinct physical nodes** (SLURM packed tasks); this is NOT
+  "100 nodes" and NOT "400+ nodes".
+- No raw log exists for the historical "4 hours" local baseline or a historical "18 minutes"
+  run; no dashboard load-time (>10 s) measurement; no crash incident log.
+- `sinfo` capture showed only the account's 28-core partitions (156 nodes) with GPU partitions
+  DOWN — a subset of the full published cluster, not evidence of total cluster size.
 
-## 16. Recommended resume wording
+## 16. Recommended resume wording (verified against raw evidence)
 
-- **Bullet 1 (safe):** "Parallelized GerryChain ReCom MCMC generation with Python + SLURM job
-  arrays on Stony Brook's SeaWulf cluster (published ~23,000 cores / 400+ nodes), scaling the
-  pipeline to a 10,000-plan configuration; in a controlled 1,000-plan benchmark measured a
-  2.4× wall-clock speedup (87s → 36s) across 10 nodes, with larger speedups at production scale."
-  *If you keep 13×/4h→18min, tag it as the 10,000-plan production run and note it is from project
-  records, since no raw before/after log is in the evidence set.*
-- **Bullet 2 (safe):** "Implemented automated retry (bounded, up to 100 attempts) and output
-  validation logic; achieved 100% completed, zero-failed tasks across all benchmarked runs
-  (30/30 array tasks, 1,000/1,000 plans present and schema-validated)." *Drop or source the
-  "30–40 min crash" unless a log is produced.*
-- **Bullet 3 (safe):** "Optimized the analysis dashboard with Streamlit caching and geometry
-  dissolve (2,658 precincts aggregated into the analysis super-districts) for responsive
-  exploration." *Replace "~50 shapes" and "10s→1s" unless measured — dissolve yields 3 districts.*
+- **Bullet 1 (safe, verified):** "Parallelized 10,000-plan GerryChain ReCom MCMC generation with
+  Python + SLURM job arrays on Stony Brook's SeaWulf cluster, reducing median wall-clock runtime
+  from 10 m 17 s to 2 m 31 s — a **4.09× speedup** across three repetitions on 37–38 nodes per
+  run, with 300/300 array tasks completing and zero failures."
+  *Keep "~23,000-core cluster" only as SeaWulf's published capacity, not as your usage. Do NOT
+  write 13×, 4h→18min, or 400+ nodes as measured — those are unreproduced historical/capacity
+  figures (retain only if separate historical evidence is produced).*
+- **Bullet 2 (safe, verified):** "Added automated plan-count and validity checks for distributed
+  SeaWulf runs, achieving 100% verified outputs across three 10,000-plan serial jobs and 300
+  SLURM array tasks with zero task failures."
+  *Use the word "retry" only for the bounded restart that genuinely exists in code
+  (`fra_gluing_algorithm.py max_attempts=100`, `validate_pipeline.py` retry_count). Drop the
+  "30–40 min crash / unblocked research teams" clauses unless a failure log / dependency record
+  is produced.*
+- **Bullet 3 (safe, verified):** "Improved dashboard responsiveness by dissolving 2,658 precinct
+  geometries into the analysis super-districts and caching precomputed results for interactive
+  exploration."
+  *Remove "~50 shapes" (measured: 3 records / 4 polygons — contradicted) and remove "10s → <1s"
+  (unmeasured; raw dissolve ≈ 2.1 s, sub-second only via cache).*
 
 ## 17. Recommended interview wording
 
-- Lead with the **methodology and the honest 2.42×**: "I built a controlled benchmark — same
-  commit, same input checksum, queue wait excluded, serial vs a 10-node SLURM array, 3 reps
-  each. Serial median 87s, parallel 36s, 2.42×."
-- Volunteer the **why**: "The speedup is bounded because ~30s of each job is fixed overhead —
-  loading the shapefile and building an O(N²) adjacency graph over 2,658 precincts — so with
-  100 plans per task you're mostly paying setup. Marginal per-plan cost is ~0.06s. That's an
-  Amdahl's-law ceiling, and it's why bigger batches per task parallelize better."
-- On the resume's 13×/10k: "Those describe the 10,000-plan production run on SeaWulf from my
-  project records; the local baseline there was ~4 hours on a laptop-class machine. My reproduced
-  benchmark is a smaller, tighter-controlled 1,000-plan study on cluster hardware, so the numbers
-  differ by design — different scale and different serial baseline."
-- On 23,000 cores / 400+ nodes: "That's SeaWulf's total published capacity across hardware
-  generations. My account saw the 156-node 28-core partitions; my benchmark used 10 nodes. I'm
-  careful to distinguish cluster capacity from what I actually consumed."
+- Lead with the **primary result and methodology**: "At 10,000-plan scale I ran a controlled
+  benchmark — same commit, same input checksum, queue wait excluded, one-node serial vs a
+  100-task SLURM array, 3 reps each. Serial median 617 s, parallel median 151 s, **4.09×**, on
+  37–38 physical nodes, 300/300 tasks with zero failures."
+- Volunteer the **why the speedup isn't 100×**: "Each job pays ~30 s fixed overhead — loading the
+  shapefile and building an O(N²) adjacency graph over 2,658 precincts. At 100 plans/task that
+  overhead is amortized better than at 1,000 plans on one node, which is exactly why the 10k
+  speedup (4.09×) exceeds the 1k speedup (2.42×). It's an Amdahl's-law story, and I can show the
+  scaling curve."
+- On the resume's 13× / 4h→18min: "That's a historical figure from my earlier project notes whose
+  serial baseline was a laptop-class machine; I don't have the raw before/after log, so I don't
+  present it as measured. My reproduced, evidence-backed number is 4.09× cluster-serial vs
+  cluster-parallel at 10k."
+- On 23,000 cores / 400+ nodes: "That's SeaWulf's published total capacity across hardware
+  generations. My account saw the 156-node 28-core partitions; my 10k run used 37–38 nodes. I'm
+  careful to separate cluster capacity from what I actually consumed, and task count from node
+  count."
 
 ## 18. Additional experiments to strengthen unresolved claims
 
-1. Run the full **100-task, 10,000-plan** production array and capture `sacct` → gives a real
-   10k completion log, distinct-node count, and true production wall clock (settles 10k, 18min).
+1. ~~Run the full 100-task, 10,000-plan production array~~ **DONE** — see §7a
+   (`bench10k/`): 4.09×, 617s→151s, 37–38 nodes, 300/300 tasks, 0 failures.
 2. Time the **original local serial** path on the machine that produced "4 hours" → validates the
-   13× denominator (or restate it).
+   13× denominator (or restate it). Still outstanding.
 3. Add a **dashboard load-time harness** (cold vs warm cache, N reps) → replaces "10s → <1s".
 4. Count **polygon components** after dissolve (`.explode()`) → confirm the real shape count vs
    "~50"; likely it's 3 dissolved districts made of multiple polygon parts.
@@ -255,17 +299,69 @@ Ran locally (`docs/evidence/Mac_dashboard_benchmark.json`), 5 reps, plan 1:
 
 | Claim | Evidence category | Supporting source | Confidence | Scope | Safe resume wording | Additional evidence needed |
 |---|---|---|---|---|---|---|
-| Python + SLURM parallelization | 1 (reproduced) | benchmark sacct, sbatch | High | 1,000-plan benchmark | keep as-is | — |
-| 2.42× speedup | 1 (reproduced) | sacct 69962–69986, BENCHMARK_RESULTS.json | High | 1,000 plans, 10 nodes, serial-on-cluster | "2.4× (87s→36s) in controlled 1,000-plan benchmark" | 100-task run for prod speedup |
-| 10,000+ simulations | 2 + 4 | README, HPC doc, `--array=1-100` | Medium | production config | "scaled to a 10,000-plan configuration" | completed 10k sacct/log |
-| 4h → 18min / 13× | 2 / 5 | HPC doc, README | Low-Med (records only) | 10,000-plan production, local baseline | tag as production-record; or omit multiplier | raw local-4h + 10k-18min logs |
-| 23,000 cores | 3 | project docs (SeaWulf spec) | Med (as capacity) | cluster capacity | "on SeaWulf (~23,000-core cluster)" | independent SBU spec page |
-| 400+ nodes | 3 | HPC doc | Med (as capacity) | cluster capacity | "400+-node cluster" (capacity, not usage) | — |
-| 100% verified outputs | 1 (subset) | 30/30 COMPLETED, OUTPUT_INVENTORY 1000/1000 | High (for runs) | benchmarked runs | "100% completed/zero-failed across benchmarked runs" | 10k-run verification |
-| Retry + validation logic | 4 | validate_pipeline.py, fra_gluing max_attempts=100, rerun_failed_plans.py | High (impl) | code | keep as-is | — |
-| 30–40 min crash eliminated | 5 | none | Low | — | omit or source | crash/incident log |
-| Streamlit caching | 4 | dashboard_fra.py @st.cache_data | High (code) | code | keep as-is | — |
-| 2,658 geometries | 1 (measured) | dashboard_benchmark.json (input_precinct_rows=2658) | High | dataset | keep as-is | — |
-| dissolve aggregation | 1 (measured) | dashboard_benchmark.json | High | code | "dissolved 2,658 precincts into the analysis districts" | — |
-| ~50 shapes | 6 (contradicted) | dashboard_benchmark.json: 3 rows / 4 polygons | High | measured | REMOVE — say "into the analysis super-districts" | — |
-| dashboard 10s → <1s | 5 | raw dissolve ≈2.1s measured; <1s only via cache | Low-Med | measured (partial) | "cached precomputed results for responsive/real-time exploration" (drop 10s→<1s) | Streamlit cross-rerun cache timing |
+| Python + SLURM parallelization | 1 (reproduced) | bench10k sacct, sbatch | High | 10k + 1k benchmarks | keep as-is | — |
+| **4.09× speedup (617s→151s)** | 1 (reproduced) | `bench10k/` sacct 70002/70115/70216 + 70011/70116/70217 | High | **10,000 plans, 37–38 nodes, cluster-serial baseline** | "4.09× (10m17s→2m31s) across 37–38 nodes, 3 reps" | — |
+| 2.42× speedup (87s→36s) | 1 (reproduced) | sacct 69962–69986 | High | 1,000 plans, 10 nodes | keep as secondary/smaller-scale result | — |
+| 10,000+ simulations | **1 (reproduced)** | `bench10k/` — 3 reps × 10,000 plans, 300/300 tasks | High | measured production scale | "10,000-plan runs" — supported | — |
+| 4h → 18min / 13× | 2 / 5 (historical, unresolved) | HPC doc, README only | Low | historical, laptop serial baseline | omit as measured; retain only if separate historical log produced | raw local-4h + historical-18min logs |
+| 23,000 cores | 3 (official capacity) | project docs citing SeaWulf | Med | cluster capacity, NOT usage | "on SeaWulf (~23,000-core cluster)" only as capacity | independent SBU spec page |
+| 400+ nodes | 3 (capacity) vs measured 37–38 | HPC doc vs `distinct_nodes_*` | Med | capacity ≠ usage | do NOT claim as usage; measured usage = 37–38 nodes | — |
+| 100% verified outputs | 1 (reproduced) | 300/300 COMPLETED + 3/3 serial; OUTPUT_INVENTORY 1000/1000 | High | 10k benchmark | "100% verified across three 10,000-plan jobs + 300 array tasks, 0 failures" | — |
+| Automated retry logic | 4 (implementation) | `fra_gluing_algorithm.py:327` max_attempts=100 reseed-on-ValueError; `validate_pipeline.py` retry_count; `rerun_failed_plans.py` | High (code) | code | "automated retry" justified | — |
+| Output validation logic | 4 (implementation) | `validate_pipeline.py`, per-plan schema/count checks | High (code) | code | keep as-is | — |
+| 30–40 min crash eliminated | 5 (unresolved) | none | Low | — | omit or source | crash/incident log |
+| Unblocked downstream research teams | 5 (unresolved) | none in repo | Low | — | omit unless documented | project record / dependency doc |
+| Streamlit caching | 4 (code) | dashboard_fra.py @st.cache_data (5×) | High | code | keep as-is | — |
+| 2,658 geometries | 1 (measured) | `Mac_dashboard_benchmark.json` input_precinct_rows=2658 | High | dataset | keep as-is | — |
+| dissolve aggregation | 1 (measured) | `Mac_dashboard_benchmark.json` | High | code | "dissolved 2,658 precincts into the analysis super-districts" | — |
+| ~50 shapes | **6 (contradicted)** | `Mac_dashboard_benchmark.json`: 3 records / 4 polygons | High | measured | **REMOVE** — say "into the analysis super-districts" | — |
+| dashboard 10s → <1s | 5 (unresolved) | raw dissolve ≈2.1s; <1s only via cache; >10s never measured | Low | partial | drop exact timing; "cached for interactive exploration" | Streamlit cross-rerun cache timing |
+
+---
+
+## 19. Final deliverables summary
+
+### 19a. Final evidence-backed resume bullets (use these)
+
+1. **"Parallelized 10,000-plan MCMC generation with Python and SLURM job arrays on Stony Brook's
+   SeaWulf cluster, reducing median runtime from 10 m 17 s to 2 m 31 s — a 4.09× speedup across
+   three repetitions on 37–38 nodes per run, with 300/300 array tasks completing and zero
+   failures."**
+2. **"Implemented automated retry (bounded reseed, up to 100 attempts) and output-validation
+   logic in Python, achieving 100% verified outputs across three 10,000-plan serial jobs and 300
+   SLURM array tasks with zero task failures."**
+3. **"Improved dashboard responsiveness by dissolving 2,658 precinct geometries into the analysis
+   super-districts and caching precomputed results for interactive exploration."**
+
+### 19b. Interview-safe methodology explanation
+
+Same commit + input checksum on both arms; queue wait excluded; serial = one 10,000-plan process
+on one node (median 617 s), parallel = 100-task SLURM array of 100 plans each (median wall 151 s,
+earliest task start → latest task end). 4.09× over 3 reps, 37–38 distinct physical nodes (tasks
+packed onto nodes — not 100 nodes). The speedup is bounded by a ~30 s fixed per-job overhead
+(shapefile load + O(N²) adjacency graph over 2,658 precincts); this is why 10k (4.09×) beats 1k
+(2.42×). All numbers are independently re-derived from raw `sacct` in `docs/evidence/seawulf/bench10k/`.
+
+### 19c. Claims that remain HISTORICAL / UNRESOLVED (not reproduced, not disproven)
+
+- **13× and 4 hours → 18 minutes** — appear only in project docs (`README.md`,
+  `docs/notes/HPC_SEAWULF_EXECUTION.md`); no raw local-4h or historical-18min log. Different scope
+  (laptop serial baseline) from the reproduced 4.09×. Retain only with separate historical evidence.
+- **30–40 minute batch crashes** — no crash/incident log anywhere in the repo.
+- **"Unblocked downstream research teams"** — no project record or dependency doc in the repo.
+- **Dashboard ">10 s → <1 s"** — the >10 s starting point was never measured; sub-second only via
+  Streamlit cache.
+- **23,000 cores / 400+ nodes** — official SeaWulf capacity (Category 3), NOT project usage;
+  measured usage was 37–38 nodes.
+
+### 19d. Claims CONTRADICTED by evidence (must be removed/changed)
+
+- **"~50 shapes"** — measured dissolve output is **3 records / 4 polygon components**
+  (`Mac_dashboard_benchmark.json`). There is no interpretation yielding ~50. Remove it.
+
+### 19e. Claims now FULLY REPRODUCED (Category 1)
+
+- 10,000-plan runs executed and completed (300/300 tasks, 3/3 serial jobs, 0 failures).
+- 4.0861× median speedup (617 s → 151 s), 37–38 nodes/rep.
+- 100% verified outputs for the benchmarked runs.
+- 2,658 input precincts; dissolve to the analysis super-districts.
