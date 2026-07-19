@@ -112,9 +112,10 @@ def main():
         elif (cwd.parent / "outputs" / "baseline_ensemble.csv").exists():
             base_dir = cwd.parent
             csv_path = base_dir / "outputs" / "baseline_ensemble.csv"
-        # Try absolute path as last resort
+        # Script-relative fallback (Gap 36): fra_pipeline/ is the script's grandparent.
+        # No developer-specific absolute paths — works on any clone/machine.
         else:
-            abs_path = Path("/Users/kartikvadhawana/Desktop/FRA/NEWFINALFRA/fra_pipeline")
+            abs_path = Path(__file__).resolve().parents[1]
             if (abs_path / "outputs" / "baseline_ensemble.csv").exists():
                 base_dir = abs_path
                 csv_path = base_dir / "outputs" / "baseline_ensemble.csv"

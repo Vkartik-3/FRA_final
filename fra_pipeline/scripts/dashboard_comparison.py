@@ -48,36 +48,46 @@ st.set_page_config(
 # ============================================================================
 
 @st.cache_data
-def load_baseline_ensemble(csv_path):
-    """Load baseline ensemble CSV."""
+def load_baseline_ensemble(csv_path: str):
+    """Load baseline ensemble CSV. Accepts str so cache key is hashable."""
     return pd.read_csv(csv_path)
 
 
 @st.cache_data
-def load_fra_ensemble(fra_dir, max_plans=1000):
-    """Load all FRA results into a combined DataFrame."""
+def load_fra_ensemble(fra_dir_str: str):
+    """Load all FRA results into a combined DataFrame.
+
+    Accepts fra_dir as a string (not Path) so Streamlit's cache hash is
+    stable and safe across reruns.  Discovers files dynamically via glob
+    rather than scanning a hardcoded 1–1000 range, so the function works
+    correctly for both 1,000-plan and 10,000-plan runs without any change.
+    """
+    fra_dir = Path(fra_dir_str)
     all_results = []
 
-    for i in range(1, max_plans + 1):
-        fra_results_path = fra_dir / f"fra_results_{i}.csv"
-        if fra_results_path.exists():
-            df = pd.read_csv(fra_results_path)
-            total_dem = df['dem_seats'].sum()
-            total_rep = df['rep_seats'].sum()
-            total_votes_dem = df['dem_votes'].sum()
-            total_votes_rep = df['rep_votes'].sum()
-            total_votes = total_votes_dem + total_votes_rep
+    for fra_results_path in sorted(fra_dir.glob("fra_results_*.csv")):
+        try:
+            plan_id = int(fra_results_path.stem.split("_")[-1])
+        except ValueError:
+            continue
 
-            all_results.append({
-                'plan_id': i,
-                'dem_seats': total_dem,
-                'rep_seats': total_rep,
-                'total_seats': total_dem + total_rep,
-                'dem_seat_share': total_dem / (total_dem + total_rep) if (total_dem + total_rep) > 0 else 0,
-                'dem_vote_share': total_votes_dem / total_votes if total_votes > 0 else 0,
-                'total_dem_votes': total_votes_dem,
-                'total_rep_votes': total_votes_rep
-            })
+        df = pd.read_csv(fra_results_path)
+        total_dem = df['dem_seats'].sum()
+        total_rep = df['rep_seats'].sum()
+        total_votes_dem = df['dem_votes'].sum()
+        total_votes_rep = df['rep_votes'].sum()
+        total_votes = total_votes_dem + total_votes_rep
+
+        all_results.append({
+            'plan_id':       plan_id,
+            'dem_seats':     total_dem,
+            'rep_seats':     total_rep,
+            'total_seats':   total_dem + total_rep,
+            'dem_seat_share': total_dem / (total_dem + total_rep) if (total_dem + total_rep) > 0 else 0,
+            'dem_vote_share': total_votes_dem / total_votes if total_votes > 0 else 0,
+            'total_dem_votes': total_votes_dem,
+            'total_rep_votes': total_votes_rep,
+        })
 
     if all_results:
         return pd.DataFrame(all_results)
@@ -136,7 +146,8 @@ def get_paths():
         elif (cwd.parent / "outputs" / "baseline_ensemble.csv").exists():
             base_dir = cwd.parent
         else:
-            abs_path = Path("/Users/kartikvadhawana/Desktop/FRA/NEWFINALFRA/fra_pipeline")
+            # Script-relative fallback (Gap 36): no developer-specific paths.
+            abs_path = Path(__file__).resolve().parents[1]
             if (abs_path / "outputs" / "baseline_ensemble.csv").exists():
                 base_dir = abs_path
 
@@ -729,8 +740,8 @@ def main():
 
     # Load data
     with st.spinner("Loading data..."):
-        baseline_df = load_baseline_ensemble(baseline_csv)
-        fra_df = load_fra_ensemble(fra_dir)
+        baseline_df = load_baseline_ensemble(str(baseline_csv))
+        fra_df = load_fra_ensemble(str(fra_dir))
 
     if fra_df is None or len(fra_df) == 0:
         st.error("Failed to load FRA results")

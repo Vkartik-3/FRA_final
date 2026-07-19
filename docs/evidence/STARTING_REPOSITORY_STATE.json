@@ -1,0 +1,57 @@
+{
+  "captured_at": "2026-07-19",
+  "git": {
+    "commit": "a9e6dd0a5cfe1d1237d98911a3d368e5e4cccd65",
+    "branch": "FRA",
+    "dirty": true,
+    "modified_tracked": [
+      "fra_pipeline/scripts/analyze_baseline_and_compare.py",
+      "fra_pipeline/scripts/dashboard_comparison.py",
+      "fra_pipeline/scripts/fra_array_job.sbatch",
+      "fra_pipeline/scripts/fra_gluing_algorithm.py",
+      "fra_pipeline/scripts/generate_district_csvs.py",
+      "fra_pipeline/scripts/merge_fra_outputs.py",
+      "fra_pipeline/scripts/run_baseline_simple.py",
+      "fra_pipeline/scripts/verify_shapefile.py"
+    ],
+    "untracked_notable": [
+      "docs/", "fra_pipeline/scripts/benchmark_status_lookup.py",
+      "fra_pipeline/scripts/count_outputs.py", "fra_pipeline/scripts/db.py",
+      "fra_pipeline/scripts/fra_analysis_job.sbatch", "fra_pipeline/scripts/pipeline_status.py",
+      "fra_pipeline/scripts/print_gerrychain_provenance.py", "fra_pipeline/scripts/rerun_failed_plans.py",
+      "fra_pipeline/scripts/schema.sql", "fra_pipeline/scripts/validate_pipeline.py"
+    ]
+  },
+  "environment": {
+    "os": "Darwin 25.5.0 (macOS, arm64)",
+    "system_python": {"version": "3.14.4", "executable": "/opt/homebrew/bin/python3", "note": "no scientific packages installed"},
+    "project_venv": {
+      "path": "fra_pipeline/env",
+      "python": "3.13.13",
+      "executable": "/Users/kartikvadhawana/Desktop/FRA/NEWFINALFRA/fra_pipeline/env/bin/python"
+    },
+    "packages": {
+      "geopandas": "1.1.1", "shapely": "2.1.2", "networkx": "3.5",
+      "pandas": "2.3.3", "numpy": "2.3.4", "matplotlib": "3.10.7",
+      "streamlit": "1.50.0", "folium": "0.20.0", "gerrychain": "0.3.2"
+    },
+    "gerrychain_resolution": {
+      "imported_from": "fra_pipeline/env/lib/python3.13/site-packages/gerrychain (pip 0.3.2)",
+      "vendored_dir_present": "GerryChain/ exists in repo but is NOT the import source at runtime",
+      "implication": "Patching vendored GerryChain/ has no runtime effect unless installed editable"
+    }
+  },
+  "data_facts": {
+    "dataset_scale_present": "1000 plans (NOT 10000)",
+    "baseline_districts_csv_count": 1000,
+    "plan_assignments_count": 1000,
+    "fra_results_per_plan_csv_count": 1000,
+    "superdistrict_assignment_json_count": 1000,
+    "fra_results_N_csv_rows_per_plan": 3,
+    "fra_ensemble_combined_csv_rows": 1000,
+    "baseline_ensemble_combined_csv_rows": 1000,
+    "fra_ensemble_combined_schema_ok": true,
+    "seawulf_job_logs_or_sacct_present": false,
+    "hardcoded_home_paths_found_in": ["fra_pipeline/scripts/app_baseline.py", "fra_pipeline/scripts/dashboard_comparison.py"]
+  }
+}

@@ -1,1 +1,23 @@
+# OS junk
+.DS_Store
+**/.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments (never commit)
+fra_pipeline/env/
+env/
+venv/
+.venv/
+
+# Editor / local
+.claude/settings.local.json
 fra_pipeline/outputs/.claude
+
+# SLURM logs
+fra_pipeline/outputs/logs/*.out
+fra_pipeline/outputs/logs/*.err

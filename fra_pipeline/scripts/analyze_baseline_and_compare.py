@@ -12,6 +12,7 @@ Author: Claude Code
 Date: 2025
 """
 
+import argparse
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -266,6 +267,66 @@ def generate_baseline_plots(baseline_df, output_dir):
     plt.savefig(path, dpi=150, bbox_inches='tight')
     print(f"    ✓ Saved: {path.name}")
     plt.close()
+
+
+# ============================================================================
+# TASK 2b: ALIGNMENT — PAIRED vs DISTRIBUTIONAL
+# ============================================================================
+
+def align_for_comparison(baseline_df, fra_df):
+    """
+    Determine comparison mode and return aligned dataframes.
+
+    PAIRED mode: both DataFrames share the same plan_ids — inner join on plan_id
+    so every comparison row is the same physical plan.
+
+    DISTRIBUTIONAL mode: plan_ids do not fully overlap — compare distributions
+    independently (no per-plan pairing).
+
+    Returns:
+        (baseline_aligned, fra_aligned, mode)
+        mode is "PAIRED" or "DISTRIBUTIONAL"
+    """
+    common_ids = set(baseline_df['plan_id']) & set(fra_df['plan_id'])
+    all_baseline = set(baseline_df['plan_id'])
+    all_fra      = set(fra_df['plan_id'])
+
+    if common_ids == all_baseline == all_fra:
+        # Perfect overlap — use paired mode
+        b = baseline_df.set_index('plan_id').sort_index()
+        f = fra_df.set_index('plan_id').sort_index()
+        # Inner join to guarantee alignment even if sorted differently
+        merged = b.join(f, lsuffix='_b', rsuffix='_f', how='inner')
+        baseline_aligned = merged[[c for c in merged.columns if c.endswith('_b') or c in b.columns]].copy()
+        fra_aligned      = merged[[c for c in merged.columns if c.endswith('_f') or c in f.columns]].copy()
+        # Restore original column names
+        baseline_aligned.columns = [c.removesuffix('_b') for c in baseline_aligned.columns]
+        fra_aligned.columns      = [c.removesuffix('_f') for c in fra_aligned.columns]
+        baseline_aligned = baseline_aligned.reset_index()
+        fra_aligned      = fra_aligned.reset_index()
+        mode = "PAIRED"
+    else:
+        # Partial or no overlap — fall back to distributional
+        baseline_aligned = baseline_df.copy()
+        fra_aligned      = fra_df.copy()
+        mode = "DISTRIBUTIONAL"
+
+    missing_baseline = len(all_fra  - all_baseline)
+    missing_fra      = len(all_baseline - all_fra)
+
+    print(f"\n[COMPARISON MODE] {mode}")
+    print(f"    Baseline plans: {len(all_baseline)}  |  FRA plans: {len(all_fra)}")
+    if mode == "PAIRED":
+        print(f"    All {len(common_ids)} plan_ids match — per-plan comparison is exact.")
+    else:
+        print(f"    Overlap: {len(common_ids)} plan_ids in common")
+        if missing_baseline:
+            print(f"    ⚠  {missing_baseline} FRA plan_ids not in baseline")
+        if missing_fra:
+            print(f"    ⚠  {missing_fra} baseline plan_ids not in FRA")
+        print(f"    Falling back to distributional comparison.")
+
+    return baseline_aligned, fra_aligned, mode
 
 
 # ============================================================================
@@ -630,17 +691,41 @@ def print_summary_report(baseline_df, fra_df):
 def main():
     """Main execution function."""
 
-    # Determine paths
     script_dir = Path(__file__).parent
     base_dir = script_dir.parent
 
-    # Input directories
-    baseline_dir = base_dir / "outputs"  # baseline_districts_plan_*.csv files
-    fra_combined_path = base_dir / "outputs" / "analysis" / "fra_ensemble_combined.csv"
+    # ── CLI argument parsing ──────────────────────────────────────────────────
+    parser = argparse.ArgumentParser(description="Baseline and FRA comparison analysis")
+    parser.add_argument(
+        "--baseline-dir", type=str, default=None,
+        help="Directory containing baseline_districts_plan_*.csv files "
+             "(default: <pipeline>/outputs)"
+    )
+    parser.add_argument(
+        "--fra-combined", type=str, default=None,
+        help="Path to fra_ensemble_combined.csv "
+             "(default: <pipeline>/outputs/analysis/fra_ensemble_combined.csv)"
+    )
+    parser.add_argument(
+        "--output", type=str, default=None,
+        help="Directory to write analysis outputs "
+             "(default: <pipeline>/outputs/analysis)"
+    )
+    args = parser.parse_args()
 
-    # Output directory
-    output_dir = base_dir / "outputs" / "analysis"
+    # Resolve paths — CLI args override defaults so local no-arg runs still work
+    baseline_dir      = Path(args.baseline_dir) if args.baseline_dir \
+                        else base_dir / "outputs"
+    fra_combined_path = Path(args.fra_combined)  if args.fra_combined \
+                        else base_dir / "outputs" / "analysis" / "fra_ensemble_combined.csv"
+    output_dir        = Path(args.output)        if args.output \
+                        else base_dir / "outputs" / "analysis"
+
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"[INFO] baseline_dir:      {baseline_dir}")
+    print(f"[INFO] fra_combined_path: {fra_combined_path}")
+    print(f"[INFO] output_dir:        {output_dir}")
 
     # Task 1: Analyze baseline plans
     baseline_df = analyze_baseline_plans(baseline_dir, output_dir)
@@ -657,6 +742,9 @@ def main():
 
     fra_df = pd.read_csv(fra_combined_path)
     print(f"    ✓ Loaded {len(fra_df)} FRA plans")
+
+    # Align dataframes — resolves PAIRED vs DISTRIBUTIONAL mode
+    baseline_df, fra_df, comparison_mode = align_for_comparison(baseline_df, fra_df)
 
     # Task 3: Generate comparison plots
     compare_baseline_vs_fra(baseline_df, fra_df, output_dir)

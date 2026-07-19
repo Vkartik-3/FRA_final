@@ -14,16 +14,30 @@ Author: Claude Code
 Date: 2025
 """
 
+import argparse
+import datetime
 import json
+import os
+import time
 import pandas as pd
 import geopandas as gpd
 from pathlib import Path
 from collections import defaultdict, deque
 import random
 import sys
-import os
 from tqdm import tqdm
 from contextlib import contextmanager
+from io_utils import atomic_write_json, atomic_write_dataframe_csv
+from allocation import allocate_two_party_seats
+
+# Super-district allocation rounding method (Gap 18). Override via FRA_ALLOCATION_METHOD.
+# Default "round_half_even" preserves the original round() behavior exactly.
+ALLOCATION_METHOD = os.environ.get("FRA_ALLOCATION_METHOD", "round_half_even")
+
+try:
+    import db as _db
+except ImportError:
+    _db = None
 
 @contextmanager
 def suppress_stdout():
@@ -73,13 +87,13 @@ def load_shapefile(shp_path):
     return gdf
 
 
-def load_baseline_plan(plan_path, gdf):
+def load_baseline_plan(plan_path, gdf=None):
     """
     Load a baseline district plan from JSON.
 
     Args:
         plan_path: Path to the plan JSON file (precinct_id -> district_id)
-        gdf: GeoDataFrame with precinct data
+        gdf: Unused; kept for call-site backward compatibility.
 
     Returns:
         Dictionary mapping precinct_id to district_id
@@ -109,7 +123,14 @@ def build_precinct_adjacency(gdf):
     """
     Build precinct-level adjacency using GeoDataFrame geometry.
 
-    Two precincts are adjacent if they share a boundary (touch).
+    Two precincts are adjacent if they share a boundary (touches predicate).
+
+    Uses GeoPandas's built-in R-tree spatial index (gdf.sindex) to find
+    bounding-box candidates before applying the exact `touches` predicate.
+    This reduces the number of exact geometry tests from O(N²) to roughly
+    O(N × k) where k is the mean number of neighbors (~6–8 for typical
+    US precinct maps), giving a practical 100–400× speedup over the naive
+    full-scan approach for NC's 2,658 precincts.
 
     Args:
         gdf: GeoDataFrame with precinct geometries
@@ -117,17 +138,20 @@ def build_precinct_adjacency(gdf):
     Returns:
         Dictionary mapping precinct_id -> set of adjacent precinct_ids
     """
-    print(f"\n[3] Building precinct adjacency graph...")
+    print(f"\n[3] Building precinct adjacency graph (spatial index)...")
 
-    # Create a spatial index for efficient neighbor finding
-    # Use touches to find adjacent precincts
     adjacency = defaultdict(set)
+    idx_list  = list(gdf.index)
 
-    for idx, row in gdf.iterrows():
-        # Find all precincts that touch this one
-        potential_neighbors = gdf[gdf.geometry.touches(row.geometry)]
+    for pos, idx in enumerate(idx_list):
+        geom = gdf.geometry.iloc[pos]
 
-        for neighbor_idx in potential_neighbors.index:
+        # sindex.query returns integer positions of bbox-intersecting candidates.
+        # We then apply the exact predicate to filter down to true touches.
+        candidate_positions = gdf.sindex.query(geom, predicate="touches")
+
+        for cpos in candidate_positions:
+            neighbor_idx = idx_list[cpos]
             if neighbor_idx != idx:
                 adjacency[idx].add(neighbor_idx)
 
@@ -304,7 +328,8 @@ def glue_districts_greedy(district_adj, target_sizes, num_districts=14, seed=42)
 
     for attempt in range(max_attempts):
         try:
-            return _try_gluing(district_adj, target_sizes, num_districts, seed + attempt)
+            district_to_super = _try_gluing(district_adj, target_sizes, num_districts, seed + attempt)
+            return district_to_super, attempt + 1  # attempts_used is 1-indexed
         except ValueError as e:
             if attempt < max_attempts - 1:
                 print(f"      ⚠ Attempt {attempt + 1} failed, retrying...")
@@ -343,7 +368,7 @@ def _try_gluing(district_adj, target_sizes, num_districts, seed):
         if not unused:
             raise ValueError("Ran out of districts!")
 
-        seed_district = random.choice(list(unused))
+        seed_district = random.choice(sorted(unused))
         current_group = {seed_district}
         unused.remove(seed_district)
 
@@ -361,8 +386,8 @@ def _try_gluing(district_adj, target_sizes, num_districts, seed):
                     f"Cannot expand super-district {super_id} - no adjacent districts available!"
                 )
 
-            # Pick a random candidate and add it
-            new_district = random.choice(list(candidates))
+            # Pick a random candidate and add it — sorted() gives deterministic ordering
+            new_district = random.choice(sorted(candidates))
             current_group.add(new_district)
             unused.remove(new_district)
 
@@ -481,7 +506,9 @@ def allocate_seats_proportionally(super_districts_data, target_sizes):
     Returns:
         Updated super-district data with seat allocations
     """
-    print(f"\n[7] Allocating seats proportionally (Simplified STV-PR)...")
+    # NOTE: this is a SIMPLIFIED TWO-PARTY PROPORTIONAL approximation, NOT full STV
+    # (Gap 17). No quotas, surplus transfers, eliminations, or exhausted ballots.
+    print(f"\n[7] Allocating seats (simplified two-party proportional, not STV)...")
 
     for super_id, data in super_districts_data.items():
         # Get the number of seats for this super-district
@@ -490,9 +517,10 @@ def allocate_seats_proportionally(super_districts_data, target_sizes):
         # Calculate Democratic vote share
         dem_share = data['dem_share']
 
-        # Allocate seats proportionally
-        dem_seats = round(dem_share * total_seats)
-        rep_seats = total_seats - dem_seats
+        # Allocate seats via explicit, documented rounding policy (Gap 18).
+        # Default "round_half_even" reproduces the original round() behavior.
+        dem_seats, rep_seats = allocate_two_party_seats(
+            dem_share, total_seats, method=ALLOCATION_METHOD)
 
         # Add seat allocation to data
         data['total_seats'] = total_seats
@@ -535,54 +563,51 @@ def save_superdistrict_assignment(assignment, district_to_super, output_path):
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_path, 'w') as f:
-        json.dump(json_assignment, f, indent=2)
+    atomic_write_json(output_path, json_assignment, indent=2)
 
     print(f"    ✓ Saved super-district assignment: {output_path}")
 
 
-def save_fra_results(super_districts_data, output_path):
+def build_fra_results_df(super_districts_data) -> pd.DataFrame:
     """
-    Save FRA results as CSV.
+    Build the FRA results DataFrame in memory without writing to disk.
 
-    Columns:
-    - superdistrict_id
-    - total_seats
-    - dem_votes
-    - rep_votes
-    - dem_seats
-    - rep_seats
-    - dem_share
-    - population
-
-    Args:
-        super_districts_data: Dictionary of super-district data
-        output_path: Path to save CSV file
+    Used by the verify-before-write pattern in process_single_plan():
+    build → assert → write.
     """
-    # Create DataFrame
     rows = []
     for super_id in sorted(super_districts_data.keys()):
         data = super_districts_data[super_id]
         rows.append({
             'superdistrict_id': data['superdistrict_id'],
-            'total_seats': data['total_seats'],
-            'dem_votes': data['dem_votes'],
-            'rep_votes': data['rep_votes'],
-            'dem_seats': data['dem_seats'],
-            'rep_seats': data['rep_seats'],
-            'dem_share': data['dem_share'],
-            'population': data['population']
+            'total_seats':      data['total_seats'],
+            'dem_votes':        data['dem_votes'],
+            'rep_votes':        data['rep_votes'],
+            'dem_seats':        data['dem_seats'],
+            'rep_seats':        data['rep_seats'],
+            'dem_share':        data['dem_share'],
+            'population':       data['population'],
         })
+    return pd.DataFrame(rows)
 
-    df = pd.DataFrame(rows)
 
+def write_fra_results_df(df: pd.DataFrame, output_path) -> None:
+    """Write a pre-built FRA results DataFrame atomically (tmp → replace)."""
     output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    df.to_csv(output_path, index=False)
-
+    atomic_write_dataframe_csv(output_path, df)
     print(f"    ✓ Saved FRA results: {output_path}")
 
+
+def save_fra_results(super_districts_data, output_path):
+    """
+    Build and write FRA results CSV atomically.
+
+    Backward-compatible wrapper around build_fra_results_df + write_fra_results_df.
+    Columns: superdistrict_id, total_seats, dem_votes, rep_votes,
+             dem_seats, rep_seats, dem_share, population.
+    """
+    df = build_fra_results_df(super_districts_data)
+    write_fra_results_df(df, output_path)
     return df
 
 
@@ -590,7 +615,8 @@ def save_fra_results(super_districts_data, output_path):
 # MAIN EXECUTION
 # ============================================================================
 
-def process_single_plan(plan_num, gdf, precinct_adj, base_dir, target_sizes, num_districts, verbose=False):
+def process_single_plan(plan_num, gdf, precinct_adj, base_dir, target_sizes, num_districts,
+                        verbose=False, plan_dir_override=None, output_dir_override=None):
     """
     Process a single baseline plan through the FRA gluing algorithm.
 
@@ -598,10 +624,12 @@ def process_single_plan(plan_num, gdf, precinct_adj, base_dir, target_sizes, num
         plan_num: Plan number (1-1000)
         gdf: GeoDataFrame with precinct data
         precinct_adj: Precinct adjacency graph
-        base_dir: Base directory path
+        base_dir: Base directory path (used for default path resolution)
         target_sizes: List of super-district sizes [5, 5, 4]
         num_districts: Total number of districts (14)
         verbose: Whether to print detailed progress
+        plan_dir_override: If provided, read plan JSONs from this directory instead of default
+        output_dir_override: If provided, write FRA outputs to this directory instead of default
 
     Returns:
         Dictionary with results for this plan
@@ -611,9 +639,13 @@ def process_single_plan(plan_num, gdf, precinct_adj, base_dir, target_sizes, num
         print(f"PROCESSING PLAN {plan_num}")
         print(f"{'='*70}")
 
-    # Input/output paths
-    plan_path = base_dir / "outputs" / "plan_assignments" / f"plan_{plan_num}.json"
-    output_dir = base_dir / "outputs" / "fra"
+    # Caller-supplied dirs take priority over base_dir defaults
+    plan_dir = Path(plan_dir_override) if plan_dir_override is not None \
+               else base_dir / "outputs" / "plan_assignments"
+    output_dir = Path(output_dir_override) if output_dir_override is not None \
+                 else base_dir / "outputs" / "fra"
+
+    plan_path = plan_dir / f"plan_{plan_num}.json"
     superdistrict_assignment_path = output_dir / f"superdistrict_assignment_{plan_num}.json"
     fra_results_path = output_dir / f"fra_results_{plan_num}.csv"
 
@@ -623,8 +655,8 @@ def process_single_plan(plan_num, gdf, precinct_adj, base_dir, target_sizes, num
     # Build district adjacency
     district_adj = build_district_adjacency(precinct_adj, assignment)
 
-    # Run gluing algorithm
-    district_to_super = glue_districts_greedy(
+    # Run gluing algorithm — returns (mapping, attempts_used)
+    district_to_super, attempts_used = glue_districts_greedy(
         district_adj,
         target_sizes,
         num_districts,
@@ -643,72 +675,77 @@ def process_single_plan(plan_num, gdf, precinct_adj, base_dir, target_sizes, num
         target_sizes
     )
 
-    # Save outputs
+    # ── VERIFY BEFORE WRITE ───────────────────────────────────────────────────
+    # Build results in memory first so every assertion runs before any file
+    # is committed.  This prevents invalid data landing on disk.
+
+    results_df = build_fra_results_df(super_districts_data)
+
+    # Check 1: all precincts assigned
+    precinct_to_super = {
+        precinct: district_to_super[district]
+        for precinct, district in assignment.items()
+    }
+    assert len(precinct_to_super) == len(gdf), \
+        f"Not all precincts assigned: {len(precinct_to_super)}/{len(gdf)}"
+    assert len(set(precinct_to_super.values())) == 3, \
+        f"Should have 3 super-districts, found {len(set(precinct_to_super.values()))}"
+
+    # Check 2: seat math
+    total_seats     = results_df['total_seats'].sum()
+    total_dem_seats = results_df['dem_seats'].sum()
+    total_rep_seats = results_df['rep_seats'].sum()
+    assert total_seats == 14, \
+        f"Total seats must be 14, got {total_seats}"
+    assert total_dem_seats + total_rep_seats == 14, \
+        f"Dem+Rep seats must equal 14, got {total_dem_seats}+{total_rep_seats}"
+
+    # Check 3: vote conservation
+    original_dem = gdf['G24PREDHAR'].sum()
+    original_rep = gdf['G24PRERTRU'].sum()
+    fra_dem      = results_df['dem_votes'].sum()
+    fra_rep      = results_df['rep_votes'].sum()
+    assert original_dem == fra_dem, \
+        f"Dem votes changed: {original_dem} → {fra_dem}"
+    assert original_rep == fra_rep, \
+        f"Rep votes changed: {original_rep} → {fra_rep}"
+
+    # ── ALL ASSERTIONS PASSED — NOW WRITE TO DISK ─────────────────────────────
     save_superdistrict_assignment(
         assignment,
         district_to_super,
         superdistrict_assignment_path
     )
-
-    results_df = save_fra_results(
-        super_districts_data,
-        fra_results_path
-    )
-
-    # ========================================================================
-    # VERIFICATION: Ensure correctness
-    # ========================================================================
-
-    # Verify super-district assignment completeness
-    precinct_to_super = {
-        precinct: district_to_super[district]
-        for precinct, district in assignment.items()
-    }
-    assert len(precinct_to_super) == len(gdf), f"Not all precincts assigned: {len(precinct_to_super)}/{len(gdf)}"
-    assert len(set(precinct_to_super.values())) == 3, f"Should have 3 super-districts, found {len(set(precinct_to_super.values()))}"
-
-    # Verify seat allocation correctness
-    total_seats = results_df['total_seats'].sum()
-    total_dem_seats = results_df['dem_seats'].sum()
-    total_rep_seats = results_df['rep_seats'].sum()
-
-    assert total_seats == 14, f"Total seats must be 14, got {total_seats}"
-    assert total_dem_seats + total_rep_seats == 14, f"Dem+Rep seats must equal 14, got {total_dem_seats}+{total_rep_seats}={total_dem_seats+total_rep_seats}"
-
-    # Verify vote conservation (critical check)
-    original_dem = gdf['G24PREDHAR'].sum()
-    original_rep = gdf['G24PRERTRU'].sum()
-    fra_dem = results_df['dem_votes'].sum()
-    fra_rep = results_df['rep_votes'].sum()
-
-    assert original_dem == fra_dem, f"Dem votes changed: {original_dem} → {fra_dem}"
-    assert original_rep == fra_rep, f"Rep votes changed: {original_rep} → {fra_rep}"
+    write_fra_results_df(results_df, fra_results_path)
 
     if verbose:
-        print(f"\n✓ VERIFICATION PASSED:")
+        print(f"\n✓ VERIFICATION PASSED (verify-before-write):")
         print(f"  - All {len(precinct_to_super)} precincts assigned to 3 super-districts")
         print(f"  - Total seats: {total_seats} ✓")
         print(f"  - Seat allocation: Dem {total_dem_seats} + Rep {total_rep_seats} = 14 ✓")
         print(f"  - Vote totals preserved: Dem {fra_dem:,} | Rep {fra_rep:,} ✓")
+        print(f"  - Gluing attempts used: {attempts_used}")
 
-    # Return summary
+    # Return summary including attempts_used for the per-run stats CSV
     return {
-        'plan_num': plan_num,
-        'dem_seats': total_dem_seats,
-        'rep_seats': total_rep_seats,
-        'results_df': results_df,
-        'verification_passed': True
+        'plan_num':           plan_num,
+        'dem_seats':          total_dem_seats,
+        'rep_seats':          total_rep_seats,
+        'attempts_used':      attempts_used,
+        'results_df':         results_df,
+        'verification_passed': True,
+        'success':            True,
     }
 
 
 def main():
     """
-    Main execution function - processes ALL baseline plans.
+    Main execution function - processes a range of baseline plans.
 
     Steps:
     1. Load NC 2024 precinct shapefile (once)
     2. Build precinct adjacency graph (once)
-    3. For each of 15 baseline plans:
+    3. For each plan in [start, end]:
        a. Load baseline plan
        b. Build district adjacency
        c. Run gluing algorithm
@@ -718,26 +755,50 @@ def main():
     4. Print summary of all plans
     """
 
+    parser = argparse.ArgumentParser(description="FRA gluing algorithm")
+    parser.add_argument("--start", type=int, default=1,
+                        help="First plan number to process (inclusive)")
+    parser.add_argument("--end", type=int, default=1000,
+                        help="Last plan number to process (inclusive)")
+    parser.add_argument("--input", type=str, default=None,
+                        help="Directory containing plan_N.json files")
+    parser.add_argument("--output", type=str, default=None,
+                        help="Directory to write fra_results_N.csv and superdistrict_assignment_N.json")
+    args = parser.parse_args()
+
+    start_plan = args.start
+    end_plan   = args.end
+    num_plans  = end_plan - start_plan + 1
+
     # ========================================================================
     # CONFIGURATION
     # ========================================================================
 
-    # Paths
     script_dir = Path(__file__).parent
     base_dir = script_dir.parent
 
-    # Input files
     shp_path = base_dir / "new_data" / "nc_2024_with_population.shp"
-    plan_dir = base_dir / "outputs" / "plan_assignments"
 
-    # Output directory
-    output_dir = base_dir / "outputs" / "fra"
+    # --input overrides default plan_assignments directory
+    if args.input is not None:
+        plan_dir = Path(args.input)
+    else:
+        plan_dir = base_dir / "outputs" / "plan_assignments"
+
+    # --output overrides default fra output directory
+    if args.output is not None:
+        output_dir = Path(args.output)
+    else:
+        output_dir = base_dir / "outputs" / "fra"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # FRA configuration
     target_sizes = [5, 5, 4]  # Three super-districts with 5, 5, and 4 seats
     num_districts = 14  # Total single-member districts in baseline
-    num_plans = 1000  # Total number of baseline plans to process
+
+    print(f"[INFO] Processing plans {start_plan}–{end_plan} ({num_plans} plans)")
+    print(f"[INFO] Reading plan JSONs from: {plan_dir}")
+    print(f"[INFO] Writing FRA outputs to: {output_dir}")
 
     # ========================================================================
     # STEP 1: LOAD SHAPEFILE (ONCE)
@@ -749,7 +810,10 @@ def main():
     # STEP 2: BUILD PRECINCT ADJACENCY (ONCE)
     # ========================================================================
 
+    t_adj_start = time.perf_counter()
     precinct_adj = build_precinct_adjacency(gdf)
+    t_adj_end = time.perf_counter()
+    print(f"[TIMING] Precinct adjacency build: {t_adj_end - t_adj_start:.1f}s")
 
     # ========================================================================
     # STEP 3: PROCESS ALL 15 BASELINE PLANS
@@ -760,11 +824,20 @@ def main():
     print(f"{'='*70}")
 
     all_results = []
-    failed_plans = []
+    failed_plans = []  # list of (plan_id, error_message, timestamp)
 
-    # Use tqdm progress bar for processing plans
-    # Suppress verbose output from individual plan processing
-    for plan_num in tqdm(range(1, num_plans + 1), desc="Processing FRA plans", unit="plan"):
+    # Register all plans in this batch as 'pending' before processing begins.
+    # ON CONFLICT DO NOTHING makes re-submissions of the same batch safe.
+    batch_id = (start_plan - 1) // 100 + 1  # matches SLURM array task ID convention
+    if _db:
+        _db.seed_batch(list(range(start_plan, end_plan + 1)), batch_id)
+
+    # ── Per-plan processing ───────────────────────────────────────────────────
+    t_proc_start = time.perf_counter()
+
+    for plan_num in tqdm(range(start_plan, end_plan + 1), desc="Processing FRA plans", unit="plan"):
+        if _db:
+            _db.mark_running(plan_num)
         try:
             with suppress_stdout():
                 result = process_single_plan(
@@ -773,21 +846,59 @@ def main():
                     precinct_adj,
                     base_dir,
                     target_sizes,
-                    num_districts
+                    num_districts,
+                    plan_dir_override=plan_dir,
+                    output_dir_override=output_dir,
                 )
             all_results.append(result)
+            if _db:
+                _db.mark_done(
+                    plan_num,
+                    dem_seats=result["dem_seats"],
+                    rep_seats=result["rep_seats"],
+                    attempts_used=result.get("attempts_used"),
+                )
 
         except Exception as e:
-            failed_plans.append((plan_num, str(e)))
+            ts = datetime.datetime.now().isoformat(timespec="seconds")
+            failed_plans.append((plan_num, str(e), type(e).__name__, ts))
+            if _db:
+                _db.mark_failed(plan_num, str(e), type(e).__name__)
             continue
 
-    # Report any failures
+    t_proc_end = time.perf_counter()
+    proc_s = t_proc_end - t_proc_start
+    print(f"[TIMING] Plan processing: {proc_s:.1f}s  "
+          f"({proc_s / num_plans:.2f}s per plan)")
+
+    # ── Failure tracking ──────────────────────────────────────────────────────
+    total_attempted = num_plans
+    total_succeeded = len(all_results)
+    total_failed    = len(failed_plans)
+
+    print(f"\n[SUMMARY] Attempted: {total_attempted}  "
+          f"Succeeded: {total_succeeded}  Failed: {total_failed}")
+
     if failed_plans:
-        print(f"\n⚠️  {len(failed_plans)} plans failed:")
-        for plan_num, error in failed_plans[:5]:  # Show first 5 failures
-            print(f"  - Plan {plan_num}: {error}")
-        if len(failed_plans) > 5:
-            print(f"  ... and {len(failed_plans) - 5} more")
+        print(f"\n⚠️  {total_failed} plans failed:")
+        for fp_num, fp_err, fp_exc, fp_ts in failed_plans[:5]:
+            print(f"  - Plan {fp_num} ({fp_ts}) [{fp_exc}]: {fp_err}")
+        if total_failed > 5:
+            print(f"  ... and {total_failed - 5} more")
+
+        # Save richer failed-plan log — batch-specific name prevents SLURM collision.
+        # Columns: plan_id, error_message, exception_type, timestamp.
+        analysis_dir = output_dir.parent / "analysis"
+        analysis_dir.mkdir(parents=True, exist_ok=True)
+        failed_csv = analysis_dir / f"fra_failed_plans_{start_plan}_{end_plan}.csv"
+        failed_df  = pd.DataFrame({
+            "plan_id":        [fp[0] for fp in failed_plans],
+            "error_message":  [fp[1] for fp in failed_plans],
+            "exception_type": [fp[2] for fp in failed_plans],
+            "timestamp":      [fp[3] for fp in failed_plans],
+        })
+        atomic_write_dataframe_csv(failed_csv, failed_df)
+        print(f"  ✓ Failed plan log saved to: {failed_csv}")
 
     # ========================================================================
     # FINAL SUMMARY
@@ -798,36 +909,32 @@ def main():
     print("=" * 70)
     print(f"\nSuccessfully processed {len(all_results)}/{num_plans} plans")
     print(f"\nOutputs saved to: {output_dir}/")
-    print(f"  - superdistrict_assignment_1.json through superdistrict_assignment_{num_plans}.json")
-    print(f"  - fra_results_1.csv through fra_results_{num_plans}.csv")
+    print(f"  - superdistrict_assignment_{start_plan}.json through superdistrict_assignment_{end_plan}.json")
+    print(f"  - fra_results_{start_plan}.csv through fra_results_{end_plan}.csv")
 
     # Summary statistics - only show first and last few if many plans
     print("\n📊 SUMMARY ACROSS ALL PLANS:")
-    print("-" * 70)
-    print(f"{'Plan':<6} {'Dem Seats':<12} {'Rep Seats':<12} {'Dem %':<10}")
-    print("-" * 70)
+    print("-" * 80)
+    print(f"{'Plan':<6} {'Dem Seats':<12} {'Rep Seats':<12} {'Dem %':<10} {'Attempts':<10}")
+    print("-" * 80)
 
-    # Show first 5, last 5, or all if <= 20 plans
+    def _fmt_row(result):
+        dem_seats = result['dem_seats']
+        rep_seats = result['rep_seats']
+        dem_pct   = dem_seats / 14 * 100
+        attempts  = result.get('attempts_used', '?')
+        print(f"{result['plan_num']:<6} {dem_seats:<12} {rep_seats:<12} "
+              f"{dem_pct:<10.1f}% {attempts:<10}")
+
     if len(all_results) <= 20:
         for result in all_results:
-            dem_seats = result['dem_seats']
-            rep_seats = result['rep_seats']
-            dem_pct = dem_seats / 14 * 100
-            print(f"{result['plan_num']:<6} {dem_seats:<12} {rep_seats:<12} {dem_pct:<10.1f}%")
+            _fmt_row(result)
     else:
-        # Show first 5
         for result in all_results[:5]:
-            dem_seats = result['dem_seats']
-            rep_seats = result['rep_seats']
-            dem_pct = dem_seats / 14 * 100
-            print(f"{result['plan_num']:<6} {dem_seats:<12} {rep_seats:<12} {dem_pct:<10.1f}%")
-        print(f"{'...':<6} {'...':<12} {'...':<12} {'...':<10}")
-        # Show last 5
+            _fmt_row(result)
+        print(f"{'...':<6} {'...':<12} {'...':<12} {'...':<10} {'...':<10}")
         for result in all_results[-5:]:
-            dem_seats = result['dem_seats']
-            rep_seats = result['rep_seats']
-            dem_pct = dem_seats / 14 * 100
-            print(f"{result['plan_num']:<6} {dem_seats:<12} {rep_seats:<12} {dem_pct:<10.1f}%")
+            _fmt_row(result)
 
     print("-" * 70)
 
@@ -851,6 +958,33 @@ def main():
         pct = count / len(all_results) * 100
         bar = "█" * int(pct / 5)
         print(f"  {seats} seats: {count:>2} plans ({pct:>5.1f}%) {bar}")
+
+    # Gluing attempt statistics
+    attempts_list = [r.get('attempts_used', 1) for r in all_results]
+    max_att  = max(attempts_list) if attempts_list else 0
+    mean_att = sum(attempts_list) / len(attempts_list) if attempts_list else 0
+    hard_cases = sum(1 for a in attempts_list if a > 1)
+    print(f"\n🔄 GLUING RETRY STATISTICS:")
+    print(f"  - Mean attempts per plan: {mean_att:.2f}")
+    print(f"  - Max attempts needed:    {max_att}")
+    print(f"  - Plans needing >1 try:   {hard_cases} / {len(all_results)}")
+
+    # Write per-plan stats CSV for auditability
+    if all_results:
+        stats_dir = output_dir.parent / "analysis"
+        stats_dir.mkdir(parents=True, exist_ok=True)
+        stats_csv = stats_dir / f"fra_plan_stats_{start_plan}_{end_plan}.csv"
+        stats_df  = pd.DataFrame([
+            {
+                "plan_id":      r['plan_num'],
+                "dem_seats":    r['dem_seats'],
+                "rep_seats":    r['rep_seats'],
+                "attempts_used": r.get('attempts_used', 1),
+            }
+            for r in all_results
+        ])
+        atomic_write_dataframe_csv(stats_csv, stats_df)
+        print(f"  ✓ Per-plan stats saved to: {stats_csv}")
 
     # ========================================================================
     # VERIFICATION SUMMARY

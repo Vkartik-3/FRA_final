@@ -1,0 +1,50 @@
+{
+  "generated": "2026-07-19",
+  "dataset_scale": "local 1000-plan",
+  "patterns": {
+    "plan_assignments/plan_*.json": {
+      "count": 1000,
+      "total_bytes": 28859622,
+      "min": 28670,
+      "max": 29087,
+      "mean": 28859.6
+    },
+    "fra/superdistrict_assignment_*.json": {
+      "count": 1000,
+      "total_bytes": 33446000,
+      "min": 33446,
+      "max": 33446,
+      "mean": 33446.0
+    },
+    "fra/fra_results_*.csv": {
+      "count": 1000,
+      "total_bytes": 239527,
+      "min": 223,
+      "max": 243,
+      "mean": 239.5
+    },
+    "baseline_districts_plan_*.csv": {
+      "count": 1000,
+      "total_bytes": 581408,
+      "min": 552,
+      "max": 596,
+      "mean": 581.4
+    }
+  },
+  "id_ranges": {
+    "plan_assignments": [
+      1,
+      1000
+    ],
+    "count_plan_assignments": 1000,
+    "count_fra_assignment": 1000,
+    "count_fra_results": 1000
+  },
+  "integrity": {
+    "missing_plan_ids_in_assignments": [],
+    "orphan_fra_results_without_assignment": [],
+    "orphan_assignment_without_results": [],
+    "fra_results_missing_baseline_assignment": [],
+    "tmp_remnants": []
+  }
+}

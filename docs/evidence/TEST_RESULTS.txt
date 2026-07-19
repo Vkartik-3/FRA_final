@@ -1,0 +1,25 @@
+# TEST RESULTS — Sun Jul 19 15:52:54 EDT 2026
+# runner: fra_pipeline/env/bin/python -m unittest discover -s tests -v
+
+test_one_row_per_plan (test_aggregation.TestFraAggregation.test_one_row_per_plan) ... ok
+test_required_schema_columns (test_aggregation.TestFraAggregation.test_required_schema_columns) ... ok
+test_totals_conserved (test_aggregation.TestFraAggregation.test_totals_conserved) ... ok
+test_clear_winners (test_allocation.TestDistrictTiePolicy.test_clear_winners) ... ok
+test_tie_default_is_republican_historical (test_allocation.TestDistrictTiePolicy.test_tie_default_is_republican_historical) ... ok
+test_tie_policies (test_allocation.TestDistrictTiePolicy.test_tie_policies) ... ok
+test_bad_method_raises (test_allocation.TestTwoPartyAllocation.test_bad_method_raises) ... ok
+test_largest_remainder (test_allocation.TestTwoPartyAllocation.test_largest_remainder) ... ok
+test_round_half_even_matches_historical (test_allocation.TestTwoPartyAllocation.test_round_half_even_matches_historical) ... ok
+test_round_half_up_differs_at_boundary (test_allocation.TestTwoPartyAllocation.test_round_half_up_differs_at_boundary) ... ok
+test_sum_invariant (test_allocation.TestTwoPartyAllocation.test_sum_invariant) ... ok
+test_failure_leaves_no_partial_target (test_io_utils.TestAtomicWrite.test_failure_leaves_no_partial_target) ... ok
+test_no_tmp_remnants (test_io_utils.TestAtomicWrite.test_no_tmp_remnants) ... ok
+test_unique_temp_paths_under_concurrency (test_io_utils.TestAtomicWrite.test_unique_temp_paths_under_concurrency)
+Gap 29: concurrent writers to the SAME target must not share a temp path. ... ok
+test_write_json_roundtrip (test_io_utils.TestAtomicWrite.test_write_json_roundtrip) ... ok
+----------------------------------------------------------------------
+Ran 15 tests in 0.022s
+OK
+
+# compileall:
+compileall OK

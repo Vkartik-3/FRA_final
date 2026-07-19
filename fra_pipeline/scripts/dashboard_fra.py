@@ -679,13 +679,19 @@ def main():
         st.error(f"❌ Shapefile not found: {shp_path}")
         st.stop()
 
-    # Check how many FRA plans are available (up to 1000)
+    # Discover available FRA plans by scanning the directory (Gap 35).
+    # Supports sparse plan IDs and IDs above 1000 with no hardcoded upper bound;
+    # a plan counts only if BOTH the assignment JSON and the results CSV exist.
+    import re
     fra_plans_available = []
-    for i in range(1, 1001):  # Check for plans 1-1000
-        fra_path = fra_dir / f"superdistrict_assignment_{i}.json"
-        fra_results_path = fra_dir / f"fra_results_{i}.csv"
-        if fra_path.exists() and fra_results_path.exists():
+    for f in fra_dir.glob("superdistrict_assignment_*.json"):
+        m = re.fullmatch(r"superdistrict_assignment_(\d+)", f.stem)
+        if not m:
+            continue
+        i = int(m.group(1))
+        if (fra_dir / f"fra_results_{i}.csv").exists():
             fra_plans_available.append(i)
+    fra_plans_available.sort()
 
     if not fra_plans_available:
         st.error(f"❌ No FRA plans found in {fra_dir}")

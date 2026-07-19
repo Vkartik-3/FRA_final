@@ -1,0 +1,15 @@
+{
+  "run_id": "local-aggregation-verify-20260719",
+  "commit": "a9e6dd0-dirty",
+  "environment": "macOS fra_pipeline/env py3.13",
+  "workload": "re-aggregate 1000 FRA plans (3 rows/plan) -> 1-row/plan",
+  "rows_produced": 1000,
+  "unique_plan_ids": 1000,
+  "seats_sum_to_14_all": true,
+  "matches_committed_combined_csv": true,
+  "runtime_seconds": 0.34,
+  "evidence_files": [
+    "docs/evidence/OUTPUT_INVENTORY.json",
+    "docs/evidence/RUN_MANIFEST.json"
+  ]
+}
