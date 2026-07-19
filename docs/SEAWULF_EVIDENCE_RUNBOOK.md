@@ -68,20 +68,35 @@ sha256sum fra_pipeline/new_data/nc_2024_with_population.shp \
 git rev-parse HEAD >> docs/evidence/seawulf/INPUT_CHECKSUM.txt
 ```
 
-Run the serial generation on ONE node, 3 times, capture each wall-clock:
+Run the serial generation on ONE node, 3 times, capture each wall-clock. The script's real
+flags are `--start` / `--end` / `--output` / `--seed_offset` (there is **no** `--plans`);
+`N` plans means `--start 1 --end N`. Set `N` once, e.g. `N=1000`:
 
 ```bash
-# example — adjust flags to match run_baseline_simple.py's real args
+N=1000   # use the SAME N in Step 3
 for i in 1 2 3; do
   /usr/bin/time -v python fra_pipeline/scripts/run_baseline_simple.py \
-    --plans N --output /tmp/serial_run_$i \
+    --start 1 --end "$N" --seed_offset 0 \
+    --output /tmp/serial_run_$i \
     2> docs/evidence/seawulf/serial_time_$i.txt
 done
 ```
 
+Baseline-only is the cleanest speedup arm. If you want to time the **full** per-plan pipeline
+(baseline + FRA gluing), also run the gluing step on the same output — its flags are
+`--start` / `--end` / `--input` / `--output`:
+
+```bash
+python fra_pipeline/scripts/fra_gluing_algorithm.py \
+  --start 1 --end "$N" --input /tmp/serial_run_1 --output /tmp/serial_fra_1
+```
+
 **Capture:** the three `serial_time_*.txt` files (each has Elapsed wall clock + MaxRSS).
 
-**Confirm:** all three used the same N, same commit, same shapefile checksum.
+**Confirm:** all three used the same N, same commit, same shapefile checksum, and record in
+`BENCHMARK_RESULTS.json` whether the timing is baseline-only or baseline+FRA (must match the
+parallel arm — the sbatch runs BOTH stages, so for a fair speedup either time both here too,
+or compare only the baseline stage on both sides).
 
 ---
 
