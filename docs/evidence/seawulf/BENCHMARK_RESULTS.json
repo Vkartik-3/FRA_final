@@ -1,0 +1,80 @@
+{
+  "commit": "c19c06ec095af774d63bb9f2904f0054f79bba77",
+  "shapefile_sha256": "bd9a2440370ea5c234f71f26eb4d39e17c990236ae3210cba0b14eda9adb96fe",
+  "n_plans": 1000,
+  "stages_included": [
+    "baseline_generation"
+  ],
+  "serial_seconds": [
+    85,
+    87,
+    89
+  ],
+  "parallel_seconds": [
+    41,
+    35,
+    36
+  ],
+  "boundary": "queue wait excluded; serial Start-to-End and parallel first-task-Start to last-task-End from sacct",
+  "serial_median_seconds": 87,
+  "parallel_median_seconds": 36,
+  "speedup_median": 2.4167,
+  "repetitions": 3,
+  "hardware": {
+    "serial": "1 SeaWulf node per repetition; sacct recorded 28 allocated CPUs",
+    "parallel": "10 array tasks on 10 distinct physical nodes per repetition; 100 plans per task"
+  },
+  "job_ids": {
+    "serial": [
+      "69962",
+      "69974",
+      "69975"
+    ],
+    "parallel": [
+      "69964",
+      "69976",
+      "69986"
+    ]
+  },
+  "distinct_nodes": {
+    "69964": [
+      "sn007",
+      "sn009",
+      "sn011",
+      "sn056",
+      "sn059",
+      "sn060",
+      "sn064",
+      "sn136",
+      "sn137",
+      "sn148"
+    ],
+    "69976": [
+      "sn007",
+      "sn009",
+      "sn011",
+      "sn056",
+      "sn059",
+      "sn060",
+      "sn064",
+      "sn136",
+      "sn137",
+      "sn148"
+    ],
+    "69986": [
+      "sn007",
+      "sn009",
+      "sn011",
+      "sn056",
+      "sn059",
+      "sn060",
+      "sn064",
+      "sn136",
+      "sn137",
+      "sn148"
+    ]
+  },
+  "completed_serial_jobs": 3,
+  "completed_parallel_tasks": 30,
+  "failed_tasks": 0
+}

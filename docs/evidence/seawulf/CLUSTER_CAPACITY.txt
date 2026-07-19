@@ -1,0 +1,64 @@
+cluster capacity must be distinguished from project usage
+
+=== PARTITIONS, NODES, CORES, MEMORY ===
+PARTITION NODES CPUS MEMORY
+gpu 6 28 128836+
+p100 1 12 64335
+gpu-long 6 28 128836+
+gpu-large 6 28 128836+
+debug-28core 156 28 128843+
+extended-28core 156 28 128843+
+large-28core 156 28 128843+
+long-28core 156 28 128843+
+medium-28core 156 28 128843+
+short-28core 156 28 128843+
+v100 2 28 128844
+
+=== NODE STATE SUMMARY ===
+PARTITION       AVAIL  TIMELIMIT   NODES(A/I/O/T)  NODELIST
+gpu              down    8:00:00          0/6/0/6  sn-nvda[3-8]
+p100             down 1-00:00:00          0/1/0/1  cn-nvidia
+gpu-long         down 2-00:00:00          0/6/0/6  sn-nvda[3-8]
+gpu-large        down    8:00:00          0/6/0/6  sn-nvda[3-8]
+debug-28core       up    1:00:00     98/43/15/156  sn[001-156]
+extended-28core    up 7-00:00:00     98/43/15/156  sn[001-156]
+large-28core       up    8:00:00     98/43/15/156  sn[001-156]
+long-28core        up 2-00:00:00     98/43/15/156  sn[001-156]
+medium-28core      up   12:00:00     98/43/15/156  sn[001-156]
+short-28core       up    4:00:00     98/43/15/156  sn[001-156]
+v100             down 1-00:00:00          0/2/0/2  sn-nvda[1-2]
+
+=== PARTITION TOTALS ===
+PartitionName=gpu
+   MaxNodes=2 MaxTime=08:00:00 MinNodes=1 LLN=NO MaxCPUsPerNode=UNLIMITED
+   State=DOWN TotalCPUs=168 TotalNodes=6 SelectTypeParameters=NONE
+PartitionName=p100
+   MaxNodes=1 MaxTime=1-00:00:00 MinNodes=1 LLN=NO MaxCPUsPerNode=UNLIMITED
+   State=DOWN TotalCPUs=12 TotalNodes=1 SelectTypeParameters=NONE
+PartitionName=gpu-long
+   MaxNodes=1 MaxTime=2-00:00:00 MinNodes=1 LLN=NO MaxCPUsPerNode=UNLIMITED
+   State=DOWN TotalCPUs=168 TotalNodes=6 SelectTypeParameters=NONE
+PartitionName=gpu-large
+   MaxNodes=4 MaxTime=08:00:00 MinNodes=1 LLN=NO MaxCPUsPerNode=UNLIMITED
+   State=DOWN TotalCPUs=168 TotalNodes=6 SelectTypeParameters=NONE
+PartitionName=debug-28core
+   MaxNodes=8 MaxTime=01:00:00 MinNodes=1 LLN=NO MaxCPUsPerNode=UNLIMITED
+   State=UP TotalCPUs=4368 TotalNodes=156 SelectTypeParameters=NONE
+PartitionName=extended-28core
+   MaxNodes=2 MaxTime=7-00:00:00 MinNodes=1 LLN=NO MaxCPUsPerNode=UNLIMITED
+   State=UP TotalCPUs=4368 TotalNodes=156 SelectTypeParameters=NONE
+PartitionName=large-28core
+   MaxNodes=80 MaxTime=08:00:00 MinNodes=24 LLN=NO MaxCPUsPerNode=UNLIMITED
+   State=UP TotalCPUs=4368 TotalNodes=156 SelectTypeParameters=NONE
+PartitionName=long-28core
+   MaxNodes=8 MaxTime=2-00:00:00 MinNodes=1 LLN=NO MaxCPUsPerNode=UNLIMITED
+   State=UP TotalCPUs=4368 TotalNodes=156 SelectTypeParameters=NONE
+PartitionName=medium-28core
+   MaxNodes=24 MaxTime=12:00:00 MinNodes=8 LLN=NO MaxCPUsPerNode=UNLIMITED
+   State=UP TotalCPUs=4368 TotalNodes=156 SelectTypeParameters=NONE
+PartitionName=short-28core
+   MaxNodes=12 MaxTime=04:00:00 MinNodes=1 LLN=NO MaxCPUsPerNode=UNLIMITED
+   State=UP TotalCPUs=4368 TotalNodes=156 SelectTypeParameters=NONE
+PartitionName=v100
+   MaxNodes=1 MaxTime=1-00:00:00 MinNodes=1 LLN=NO MaxCPUsPerNode=UNLIMITED
+   State=DOWN TotalCPUs=56 TotalNodes=2 SelectTypeParameters=NONE

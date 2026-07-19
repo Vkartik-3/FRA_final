@@ -1,0 +1,32 @@
+=== JOB ID ===
+69957
+=== NODE ===
+sn007
+=== WORKING DIRECTORY ===
+/gpfs/home/kvadhawana/FRA_final
+=== PYTHON ===
+/gpfs/home/kvadhawana/miniforge3/envs/fra311/bin/python
+Python 3.11.14
+=== ENVIRONMENT ===
+CONDA_PREFIX=/gpfs/home/kvadhawana/miniforge3/envs/fra311
+PROJ_DATA=/gpfs/home/kvadhawana/miniforge3/envs/fra311/share/proj
+GDAL_DATA=/gpfs/home/kvadhawana/miniforge3/envs/fra311/share/gdal
+=== PACKAGE VERSIONS ===
+geopandas 1.1.1
+shapely 2.1.2
+networkx 3.5
+pandas 2.3.3
+numpy 2.3.4
+gerrychain 0.3.2
+PROJ 9.7.0
+=== SHAPEFILE READ TEST ===
+path: fra_pipeline/new_data/nc_2024_with_population.shp
+rows: 2658
+columns: 425
+crs: EPSG:2264
+geometry types: ['MultiPolygon', 'Polygon']
+null geometries: 0
+empty geometries: 0
+invalid geometries: 0
+SHAPEFILE READ PASSED
+=== SMOKE TEST PASSED ===

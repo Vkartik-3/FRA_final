@@ -1,0 +1,52 @@
+Collecting geopandas==1.1.1 (from -r fra_pipeline/requirements-lock.txt (line 6))
+  Using cached geopandas-1.1.1-py3-none-any.whl.metadata (2.3 kB)
+Requirement already satisfied: pandas==2.3.3 in /gpfs/home/kvadhawana/miniforge3/envs/fra311/lib/python3.11/site-packages (from -r fra_pipeline/requirements-lock.txt (line 7)) (2.3.3)
+Collecting shapely==2.1.2 (from -r fra_pipeline/requirements-lock.txt (line 8))
+  Using cached shapely-2.1.2-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (6.8 kB)
+Requirement already satisfied: numpy==2.3.4 in /gpfs/home/kvadhawana/miniforge3/envs/fra311/lib/python3.11/site-packages (from -r fra_pipeline/requirements-lock.txt (line 9)) (2.3.4)
+Collecting matplotlib==3.10.7 (from -r fra_pipeline/requirements-lock.txt (line 10))
+  Using cached matplotlib-3.10.7-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (11 kB)
+Requirement already satisfied: PyYAML==6.0.3 in /gpfs/home/kvadhawana/miniforge3/envs/fra311/lib/python3.11/site-packages (from -r fra_pipeline/requirements-lock.txt (line 11)) (6.0.3)
+Collecting Rtree==1.4.1 (from -r fra_pipeline/requirements-lock.txt (line 12))
+  Using cached rtree-1.4.1.tar.gz (52 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting networkx==3.5 (from -r fra_pipeline/requirements-lock.txt (line 13))
+  Using cached networkx-3.5-py3-none-any.whl.metadata (6.3 kB)
+Collecting gerrychain==0.3.2 (from -r fra_pipeline/requirements-lock.txt (line 14))
+  Using cached gerrychain-0.3.2-py2.py3-none-any.whl.metadata (13 kB)
+Collecting streamlit==1.50.0 (from -r fra_pipeline/requirements-lock.txt (line 15))
+  Using cached streamlit-1.50.0-py3-none-any.whl.metadata (9.5 kB)
+Collecting folium==0.20.0 (from -r fra_pipeline/requirements-lock.txt (line 16))
+  Downloading folium-0.20.0-py2.py3-none-any.whl.metadata (4.2 kB)
+Collecting tqdm==4.67.1 (from -r fra_pipeline/requirements-lock.txt (line 17))
+  Downloading tqdm-4.67.1-py3-none-any.whl.metadata (57 kB)
+Collecting pyogrio>=0.7.2 (from geopandas==1.1.1->-r fra_pipeline/requirements-lock.txt (line 6))
+  Downloading pyogrio-0.13.0-cp311-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (5.8 kB)
+Requirement already satisfied: packaging in /gpfs/home/kvadhawana/miniforge3/envs/fra311/lib/python3.11/site-packages (from geopandas==1.1.1->-r fra_pipeline/requirements-lock.txt (line 6)) (25.0)
+Collecting pyproj>=3.5.0 (from geopandas==1.1.1->-r fra_pipeline/requirements-lock.txt (line 6))
+  Using cached pyproj-3.7.2.tar.gz (226 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'error'
+  error: subprocess-exited-with-error
+  
+  × Getting requirements to build wheel did not run successfully.
+  │ exit code: 1
+  ╰─> [1 lines of output]
+      proj executable not found. Please set the PROJ_DIR variable. For more information see: https://pyproj4.github.io/pyproj/stable/installation.html
+      [end of output]
+  
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+error: subprocess-exited-with-error
+
+× Getting requirements to build wheel did not run successfully.
+│ exit code: 1
+╰─> See above for output.
+
+note: This error originates from a subprocess, and is likely not a problem with pip.

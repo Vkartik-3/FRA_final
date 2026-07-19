@@ -1,0 +1,34 @@
+fra_pipeline/scripts/fra_analysis_job.sbatch:3:# fra_analysis_job.sbatch — Stage 3: Post-run Analysis
+fra_pipeline/scripts/fra_analysis_job.sbatch:8:#   ARRAY_JOB_ID=$(sbatch --parsable fra_array_job.sbatch)
+fra_pipeline/scripts/fra_analysis_job.sbatch:9:#   sbatch --dependency=afterok:${ARRAY_JOB_ID} fra_analysis_job.sbatch
+fra_pipeline/scripts/fra_analysis_job.sbatch:14:#SBATCH --job-name=fra_analysis
+fra_pipeline/scripts/fra_analysis_job.sbatch:15:#SBATCH --output=../outputs/logs/fra_analysis_%j.out
+fra_pipeline/scripts/fra_analysis_job.sbatch:16:#SBATCH --error=../outputs/logs/fra_analysis_%j.err
+fra_pipeline/scripts/fra_analysis_job.sbatch:17:#SBATCH --nodes=1
+fra_pipeline/scripts/fra_analysis_job.sbatch:18:#SBATCH --ntasks=1
+fra_pipeline/scripts/fra_analysis_job.sbatch:19:#SBATCH --cpus-per-task=4
+fra_pipeline/scripts/fra_analysis_job.sbatch:20:#SBATCH --mem=16G
+fra_pipeline/scripts/fra_analysis_job.sbatch:21:#SBATCH --time=01:00:00
+fra_pipeline/scripts/fra_analysis_job.sbatch:22:#SBATCH --partition=compute
+fra_pipeline/scripts/fra_analysis_job.sbatch:34:if [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "${SLURM_SUBMIT_DIR}/fra_analysis_job.sbatch" ]; then
+fra_pipeline/scripts/fra_analysis_job.sbatch:48:if [ -f "$PROJECT_ROOT/env/bin/activate" ]; then
+fra_pipeline/scripts/fra_analysis_job.sbatch:49:    source "$PROJECT_ROOT/env/bin/activate"
+fra_pipeline/scripts/fra_array_job.sbatch:2:#SBATCH --job-name=fra_pipeline
+fra_pipeline/scripts/fra_array_job.sbatch:3:#SBATCH --output=../outputs/logs/fra_%A_%a.out
+fra_pipeline/scripts/fra_array_job.sbatch:4:#SBATCH --error=../outputs/logs/fra_%A_%a.err
+fra_pipeline/scripts/fra_array_job.sbatch:5:#SBATCH --nodes=1
+fra_pipeline/scripts/fra_array_job.sbatch:6:#SBATCH --ntasks=1
+fra_pipeline/scripts/fra_array_job.sbatch:7:#SBATCH --cpus-per-task=16
+fra_pipeline/scripts/fra_array_job.sbatch:8:#SBATCH --mem=64G
+fra_pipeline/scripts/fra_array_job.sbatch:9:#SBATCH --time=02:00:00
+fra_pipeline/scripts/fra_array_job.sbatch:10:#SBATCH --partition=compute
+fra_pipeline/scripts/fra_array_job.sbatch:11:#SBATCH --array=1-100
+fra_pipeline/scripts/fra_array_job.sbatch:28:if [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "${SLURM_SUBMIT_DIR}/fra_array_job.sbatch" ]; then
+fra_pipeline/scripts/fra_array_job.sbatch:47:# ACTIVATE YOUR ENV (REAL PATH)
+fra_pipeline/scripts/fra_array_job.sbatch:49:if [ -f "$PROJECT_ROOT/env/bin/activate" ]; then
+fra_pipeline/scripts/fra_array_job.sbatch:51:    source "$PROJECT_ROOT/env/bin/activate"
+fra_pipeline/scripts/fra_array_job.sbatch:110:#   ARRAY_JOB_ID=$(sbatch --parsable fra_array_job.sbatch)
+fra_pipeline/scripts/fra_array_job.sbatch:111:#   sbatch --dependency=afterok:${ARRAY_JOB_ID} fra_analysis_job.sbatch
+fra_pipeline/scripts/fra_array_job.sbatch:113:# See fra_analysis_job.sbatch for the full merge + compare workflow.
+fra_pipeline/scripts/fra_array_job.sbatch:115:echo "[INFO] Stage 3 deferred to fra_analysis_job.sbatch (runs after all tasks complete)"
+fra_pipeline/scripts/fra_array_job.sbatch:146:# replacing JOB_ID with the numeric job ID printed by sbatch:

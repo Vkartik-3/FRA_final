@@ -1,0 +1,45 @@
+=== HOSTNAME ===
+login2
+
+=== SLURM VERSION ===
+slurm 17.11.12
+
+=== CLUSTER NAME ===
+ClusterName             = slurm_cluster
+
+=== AVAILABLE PYTHON/GEO MODULES ===
+ants/2.3.1                                  reeds-python/2.0                    
+biopython/1.69                              slim/5.0                            
+gdal/2.2.3                                  
+gdal/3.1.4                                  
+gdal/3.1.4.old                              
+gdal/3.2.3                                  
+gdal/3.3                                    
+gdal/3.5.1                                  
+gdal/3.9.1                                  
+geos/3.7.0                                  
+geos/3.8.1                                  
+geos/3.9.1                                  
+geos/3.11.0                                 
+geospatial/1.0                              
+libgeos/3.7.0                               
+proj/4.9.3                                  
+proj/6.3.1                                  
+proj/7.2.1                                  
+proj/9.4.1                                  
+pygdal/3.7.1                                
+python/3.9.7                                
+
+=== ACTIVE CONDA ENVIRONMENT ===
+fra311
+
+=== PYTHON LOCATION ===
+/gpfs/home/kvadhawana/miniforge3/envs/fra311/bin/python
+
+=== PYTHON VERSION ===
+Python 3.11.14
+
+=== GEO STACK IMPORT CHECK ===
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'geopandas'

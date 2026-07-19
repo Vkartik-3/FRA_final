@@ -1,0 +1,90 @@
+=== JOB DETAILS ===
+JOB_ID=69959
+NODE=sn007
+COMMIT=c19c06ec095af774d63bb9f2904f0054f79bba77
+OUTPUT_DIR=/tmp/fra_10_plan_test_kvadhawana
+
+=== RUN 10 BASELINE PLANS ===
+[INFO] Generating plans 1–10 (10 plans)
+[INFO] seed_offset=1  effective_seed=43
+[INFO] Writing plan JSONs to: /tmp/fra_10_plan_test_kvadhawana
+============================================================
+📊 STEP 1: Baseline Ensemble Generation
+============================================================
+
+📂 Loading shapefile...
+✅ Loaded 2658 precincts from shapefile.
+
+🔧 Repairing invalid geometries...
+
+🔨 Building GerryChain graph...
+✅ Graph built successfully (2658 precincts).
+   Total population: 10,679,260
+   Democratic votes: 2,713,609
+   Republican votes: 2,896,941
+[TIMING] Graph build: 21.7s
+
+⚙️  Setting up ReCom chain to generate 10 plans...
+    seed=42  seed_offset=1  effective_seed=43
+
+🎲 Creating initial partition (14 districts)...
+   Ideal population per district: 762,804
+   Using recursive tree partitioning...
+✅ Initial partition created with 14 districts.
+
+🚀 Generating 10 random district plans...
+   (This may take 1-2 hours for 1000 plans...)
+
+✅ Generated 10 random district plans.
+   Unique plans:    10
+   Duplicate plans: 0  (0.0%)
+✓ All plans verified: 10/10 have correct assignments
+
+💾 Saving results to /tmp...
+   ✓ Saved summary CSV: /tmp/baseline_ensemble_1_10.csv
+   ✓ Saved 10 plan assignments to /tmp/fra_10_plan_test_kvadhawana
+
+📈 Generating histogram...
+   ✓ Saved histogram: /tmp/baseline_hist_1_10.png
+
+📊 Summary Statistics:
+   Mean Democratic seat share: 0.386
+   Std Dev: 0.037
+   Min: 0.357
+   Max: 0.429
+
+✅ Election simulation complete — results saved.
+[TIMING] Generation:  1.8s  | Save: 0.5s  | Total: 23.9s
+   ✓ Saved chain diagnostics: /tmp/chain_diagnostics_1_10.json
+
+============================================================
+✅ VERIFICATION SUMMARY
+============================================================
+
+✓ Plans generated: 10/10 (100.0%)
+✓ Plans verified: 10/10 (100.0%)
+
+All verified plans passed the following checks:
+  • All precincts assigned to districts
+  • Exactly 14 districts per plan
+  • Population balance within ±5% (enforced by GerryChain)
+  • Contiguity maintained (enforced by GerryChain)
+
+============================================================
+✅ Step 1 complete — Baseline ensemble generated and dashboard ready.
+============================================================
+
+📂 Results saved to: /tmp
+
+🖥️  To launch dashboard, run:
+   streamlit run scripts/baseline_dashboard.py
+
+
+=== OUTPUT VALIDATION ===
+plan files: 10
+minimum file size: 28826
+maximum file size: 28897
+all plans contain 2658 assignments
+TEN-PLAN VALIDATION PASSED
+
+=== TEN-PLAN TEST PASSED ===

@@ -1,0 +1,15 @@
+usage: run_baseline_simple.py [-h] [--start START] [--end END]
+                              [--output OUTPUT] [--seed_offset SEED_OFFSET]
+
+Baseline ensemble generator
+
+options:
+  -h, --help            show this help message and exit
+  --start START         First plan number to generate (1-indexed, inclusive)
+  --end END             Last plan number to generate (inclusive)
+  --output OUTPUT       Directory to write plan_N.json files (default:
+                        <base>/outputs/plan_assignments)
+  --seed_offset SEED_OFFSET
+                        Added to base seed so each SLURM batch runs an
+                        independent chain. Set to START_PLAN in SLURM (e.g.
+                        task covering plans 201-300 uses seed_offset=201).
