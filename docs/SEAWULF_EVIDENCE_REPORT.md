@@ -178,6 +178,21 @@ serial baselines**, so they are not in conflict. But 13× lacks a raw before/aft
 | ~50 shapes | 6-ish / 5 | not found anywhere | **Unsupported by any file; dissolve output is 3 records. Likely mis-stated** |
 | >10s → <1s | 5 | none (docs mention 5–30 s BFS verification, not a load-time before/after) | **No timing artifact — needs measurement** |
 
+## 14b. Measured dashboard result (NEW — `experiments/dashboard_benchmark.py`)
+
+Ran locally (`docs/evidence/Mac_dashboard_benchmark.json`), 5 reps, plan 1:
+
+- **input precinct rows = 2,658** → confirms the "2,658 geometries" figure (Category 1, reproduced).
+- **dissolved rows = 3; exploded polygon components = 4** → the "~50 shapes" figure is
+  **contradicted (Category 6)**. The dissolve produces 3 super-district records (4 separate
+  polygons). There is no configuration under which this is ~50.
+- **cold shapefile load ≈ 0.30 s; dissolve ≈ 2.08 s; load+dissolve ≈ 2.4 s.** So the raw
+  aggregation is ~2 s on this machine — the "<1 second" figure is only achievable via the
+  Streamlit `@st.cache_data` layer (first interaction pays ~2.4 s, subsequent cached reads are
+  sub-second). The ">10 s" starting point is not reproduced by this harness and remains
+  unmeasured. Net: caching + dissolve are real and beneficial, but the specific "10s → <1s" and
+  "~50 shapes" numbers are not supported; "~50 shapes" is contradicted.
+
 ## 15. Benchmark limitations and caveats
 
 - Benchmark scale is **1,000 plans**, not 10,000; speedup is scale-dependent (fixed overhead
@@ -250,7 +265,7 @@ serial baselines**, so they are not in conflict. But 13× lacks a raw before/aft
 | Retry + validation logic | 4 | validate_pipeline.py, fra_gluing max_attempts=100, rerun_failed_plans.py | High (impl) | code | keep as-is | — |
 | 30–40 min crash eliminated | 5 | none | Low | — | omit or source | crash/incident log |
 | Streamlit caching | 4 | dashboard_fra.py @st.cache_data | High (code) | code | keep as-is | — |
-| 2,658 geometries | 2 | project docs, dashboard | High | dataset | keep as-is | — |
-| dissolve aggregation | 4 | dashboard_fra.py:474 | High (code) | code | keep (yields 3 districts) | — |
-| ~50 shapes | 5/6 | not found | Very low | — | replace/remove | `.explode()` component count |
-| dashboard 10s → <1s | 5 | none | Low | — | omit until measured | load-time harness |
+| 2,658 geometries | 1 (measured) | dashboard_benchmark.json (input_precinct_rows=2658) | High | dataset | keep as-is | — |
+| dissolve aggregation | 1 (measured) | dashboard_benchmark.json | High | code | "dissolved 2,658 precincts into the analysis districts" | — |
+| ~50 shapes | 6 (contradicted) | dashboard_benchmark.json: 3 rows / 4 polygons | High | measured | REMOVE — say "into the analysis super-districts" | — |
+| dashboard 10s → <1s | 5 | raw dissolve ≈2.1s measured; <1s only via cache | Low-Med | measured (partial) | "cached precomputed results for responsive/real-time exploration" (drop 10s→<1s) | Streamlit cross-rerun cache timing |

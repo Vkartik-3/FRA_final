@@ -1,0 +1,42 @@
+{
+  "host": "Mac",
+  "plan": 1,
+  "reps": 5,
+  "geometry": {
+    "input_precinct_rows": 2658,
+    "dissolved_superdistrict_rows": 3,
+    "exploded_polygon_components": 4,
+    "note": "dissolve yields dissolved_superdistrict_rows records; exploded_polygon_components is the true count of separate polygons drawn"
+  },
+  "load_seconds": {
+    "cold_median": 0.298,
+    "cold_all": [
+      0.834,
+      0.298,
+      0.293,
+      0.293,
+      0.318
+    ]
+  },
+  "dissolve_seconds": {
+    "median": 2.077,
+    "all": [
+      2.101,
+      2.075,
+      2.164,
+      2.032,
+      2.077
+    ]
+  },
+  "warm_dissolve_seconds": {
+    "median": 2.048,
+    "all": [
+      2.043,
+      2.021,
+      2.077,
+      2.15,
+      2.048
+    ]
+  },
+  "full_load_plus_dissolve_cold_median": 2.375
+}
