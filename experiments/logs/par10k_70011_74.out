@@ -1,0 +1,80 @@
+ARM=parallel_10k REP=1 JOB_ID=70085 TASK=74 NODE=sn060
+COMMIT=ee90f5c65a355b3b86226cb071c2d128345ccdc0 PLANS=7301-7400
+START_TIME=2026-07-19T19:09:07-0400
+[INFO] Generating plans 7301–7400 (100 plans)
+[INFO] seed_offset=7301  effective_seed=7343
+[INFO] Writing plan JSONs to: /tmp/fra_bench10k_parallel_kvadhawana_1/task_74
+============================================================
+📊 STEP 1: Baseline Ensemble Generation
+============================================================
+
+📂 Loading shapefile...
+✅ Loaded 2658 precincts from shapefile.
+
+🔧 Repairing invalid geometries...
+
+🔨 Building GerryChain graph...
+✅ Graph built successfully (2658 precincts).
+   Total population: 10,679,260
+   Democratic votes: 2,713,609
+   Republican votes: 2,896,941
+[TIMING] Graph build: 21.5s
+
+⚙️  Setting up ReCom chain to generate 100 plans...
+    seed=42  seed_offset=7301  effective_seed=7343
+
+🎲 Creating initial partition (14 districts)...
+   Ideal population per district: 762,804
+   Using recursive tree partitioning...
+✅ Initial partition created with 14 districts.
+
+🚀 Generating 100 random district plans...
+   (This may take 1-2 hours for 1000 plans...)
+
+✅ Generated 100 random district plans.
+   Unique plans:    100
+   Duplicate plans: 0  (0.0%)
+✓ All plans verified: 100/100 have correct assignments
+
+💾 Saving results to /tmp/fra_bench10k_parallel_kvadhawana_1...
+   ✓ Saved summary CSV: /tmp/fra_bench10k_parallel_kvadhawana_1/baseline_ensemble_7301_7400.csv
+   ✓ Saved 100 plan assignments to /tmp/fra_bench10k_parallel_kvadhawana_1/task_74
+
+📈 Generating histogram...
+   ✓ Saved histogram: /tmp/fra_bench10k_parallel_kvadhawana_1/baseline_hist_7301_7400.png
+
+📊 Summary Statistics:
+   Mean Democratic seat share: 0.396
+   Std Dev: 0.053
+   Min: 0.286
+   Max: 0.500
+
+✅ Election simulation complete — results saved.
+[TIMING] Generation:  6.8s  | Save: 0.5s  | Total: 28.8s
+   ✓ Saved chain diagnostics: /tmp/fra_bench10k_parallel_kvadhawana_1/chain_diagnostics_7301_7400.json
+
+============================================================
+✅ VERIFICATION SUMMARY
+============================================================
+
+✓ Plans generated: 100/100 (100.0%)
+✓ Plans verified: 100/100 (100.0%)
+
+All verified plans passed the following checks:
+  • All precincts assigned to districts
+  • Exactly 14 districts per plan
+  • Population balance within ±5% (enforced by GerryChain)
+  • Contiguity maintained (enforced by GerryChain)
+
+============================================================
+✅ Step 1 complete — Baseline ensemble generated and dashboard ready.
+============================================================
+
+📂 Results saved to: /tmp/fra_bench10k_parallel_kvadhawana_1
+
+🖥️  To launch dashboard, run:
+   streamlit run scripts/baseline_dashboard.py
+
+PLAN_COUNT=100
+END_TIME=2026-07-19T19:09:38-0400
+PARALLEL_10K_TASK_PASSED

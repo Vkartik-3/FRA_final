@@ -1,0 +1,24 @@
+Generating plans:   0%|          | 0/100 [00:00<?, ?plan/s]Generating plans:   3%|▎         | 3/100 [00:00<00:04, 23.53plan/s]Generating plans:   6%|▌         | 6/100 [00:00<00:04, 19.67plan/s]Generating plans:   9%|▉         | 9/100 [00:00<00:07, 11.42plan/s]Generating plans:  11%|█         | 11/100 [00:00<00:07, 12.51plan/s]Generating plans:  14%|█▍        | 14/100 [00:00<00:05, 15.52plan/s]Generating plans:  17%|█▋        | 17/100 [00:01<00:04, 18.07plan/s]Generating plans:  20%|██        | 20/100 [00:01<00:05, 14.14plan/s]Generating plans:  23%|██▎       | 23/100 [00:01<00:05, 14.80plan/s]Generating plans:  26%|██▌       | 26/100 [00:01<00:04, 16.06plan/s]Generating plans:  28%|██▊       | 28/100 [00:01<00:04, 14.46plan/s]Generating plans:  30%|███       | 30/100 [00:02<00:06, 11.02plan/s]Generating plans:  33%|███▎      | 33/100 [00:02<00:04, 13.79plan/s]Generating plans:  35%|███▌      | 35/100 [00:02<00:04, 14.53plan/s]Generating plans:  38%|███▊      | 38/100 [00:02<00:03, 16.63plan/s]Generating plans:  40%|████      | 40/100 [00:02<00:03, 15.19plan/s]Generating plans:  42%|████▏     | 42/100 [00:02<00:03, 15.13plan/s]Generating plans:  45%|████▌     | 45/100 [00:03<00:03, 15.66plan/s]Generating plans:  48%|████▊     | 48/100 [00:03<00:02, 17.69plan/s]Generating plans:  51%|█████     | 51/100 [00:03<00:03, 13.53plan/s]Generating plans:  53%|█████▎    | 53/100 [00:03<00:03, 13.54plan/s]Generating plans:  55%|█████▌    | 55/100 [00:03<00:03, 12.67plan/s]Generating plans:  57%|█████▋    | 57/100 [00:03<00:03, 13.59plan/s]Generating plans:  59%|█████▉    | 59/100 [00:04<00:05,  8.08plan/s]Generating plans:  62%|██████▏   | 62/100 [00:04<00:03, 11.04plan/s]Generating plans:  64%|██████▍   | 64/100 [00:04<00:02, 12.27plan/s]Generating plans:  66%|██████▌   | 66/100 [00:05<00:03,  8.71plan/s]Generating plans:  69%|██████▉   | 69/100 [00:05<00:02, 11.69plan/s]Generating plans:  73%|███████▎  | 73/100 [00:05<00:01, 15.49plan/s]Generating plans:  76%|███████▌  | 76/100 [00:05<00:01, 18.01plan/s]Generating plans:  79%|███████▉  | 79/100 [00:05<00:01, 19.67plan/s]Generating plans:  82%|████████▏ | 82/100 [00:05<00:00, 21.65plan/s]Generating plans:  85%|████████▌ | 85/100 [00:05<00:00, 22.10plan/s]Generating plans:  88%|████████▊ | 88/100 [00:05<00:00, 21.94plan/s]Generating plans:  91%|█████████ | 91/100 [00:06<00:00, 22.46plan/s]Generating plans:  94%|█████████▍| 94/100 [00:06<00:00, 23.81plan/s]Generating plans:  97%|█████████▋| 97/100 [00:06<00:00, 25.31plan/s]Generating plans: 100%|██████████| 100/100 [00:06<00:00, 26.31plan/s]Generating plans: 100%|██████████| 100/100 [00:06<00:00, 15.73plan/s]
+	Command being timed: "python fra_pipeline/scripts/run_baseline_simple.py --start 4501 --end 4600 --output /tmp/fra_bench10k_parallel_kvadhawana_1/task_46 --seed_offset 4501"
+	User time (seconds): 34.29
+	System time (seconds): 0.63
+	Percent of CPU this job got: 111%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:31.37
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 493800
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 223927
+	Voluntary context switches: 457
+	Involuntary context switches: 316
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
