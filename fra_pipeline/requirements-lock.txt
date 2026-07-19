@@ -1,0 +1,17 @@
+# Pinned, reproducible dependency set — versions verified working together.
+# Verified on Python 3.13; all pins also support Python 3.11 (e.g. fra311 on SeaWulf).
+# Install with:  pip install -r fra_pipeline/requirements-lock.txt
+# If a pin fails to build on the cluster (GDAL/GEOS/PROJ toolchain), prefer loading
+# the cluster's geo modules first, then install the rest; see docs/SEAWULF_EVIDENCE_RUNBOOK.md Step 0.
+geopandas==1.1.1
+pandas==2.3.3
+shapely==2.1.2
+numpy==2.3.4
+matplotlib==3.10.7
+PyYAML==6.0.3
+Rtree==1.4.1
+networkx==3.5
+gerrychain==0.3.2
+streamlit==1.50.0
+folium==0.20.0
+tqdm==4.67.1
