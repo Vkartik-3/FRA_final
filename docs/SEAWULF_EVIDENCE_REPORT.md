@@ -142,6 +142,32 @@ multiple tasks per node). Report 37–38 nodes, never "100 nodes." The 4.09× is
 1,000-plan 2.42× because at 10k the marginal per-plan work grows relative to the fixed ~30 s
 per-job overhead, so parallelization pays off more — consistent with the §5 overhead signature.
 
+## 7b. Local (laptop) serial baseline — the "4 hours" test (NEW)
+
+Source: `docs/evidence/local/local_serial_1000_20260719_195357.txt`, run on the developer's
+own laptop (`Darwin arm64`, Apple Silicon, Python 3.13, repo venv, commit `22e6b2d`, same
+shapefile checksum).
+
+| Metric | Value |
+|---|---|
+| Workload | 1,000 baseline plans, serial |
+| Wall clock | **29 s** (~52 plans/s) |
+| Plans produced | 1,000 / 1,000, all verified |
+| Linear extrapolation to 10,000 | **≈ 290 s (~5 minutes)** |
+
+**Decisive finding:** the current code on this laptop generates 1,000 plans in **29 s** — it is
+actually *faster* than the SeaWulf 28-core node (87 s), because single-core Apple-Silicon
+throughput exceeds the cluster's older Xeon cores. Extrapolated, **10,000 plans ≈ 5 minutes on
+this laptop, not 4 hours.**
+
+Therefore the historical **"~4 hours local"** figure is **NOT reproduced** and is in fact
+**contradicted for the current code on this machine**. A genuine 4-hour local runtime could only
+have come from (a) a substantially slower/older machine, or (b) an earlier, heavier code
+configuration — e.g. the README references `total_steps=100000` per chain, and/or a pre-R-tree
+O(N²) adjacency rebuilt per plan — neither of which is the current code path. Those earlier
+conditions are not preserved in the repo, so they cannot be verified. Net: **13× / 4h→18min
+remains historical and is now unsupported by any current measurement.**
+
 ## 8. Historical project metrics found in the repository
 
 These are authored project records (Category 2) and/or configuration (Category 4), **not**
@@ -184,12 +210,13 @@ account-subset-visible.
 | Parallel speedup | 1 (reproduced) | bench10k sacct | **4.0861× measured (617 s → 151 s), 10k scale.** NOT 13×. |
 | 23,000-core cluster | 3 | project docs citing SeaWulf | **Retain only as official cluster capacity, not project usage** |
 | 400+ nodes | 3 vs 1 | HPC doc vs `distinct_nodes_*` | **Cluster capacity claim (Cat 3); measured usage = 37–38 nodes/rep. Do NOT claim 400+ as project usage** |
-| 4h → 18 min | 2 / 5 | HPC doc (local 4h+, SeaWulf 18 min) | **Historical project record only; NOT reproduced; no raw local-4h or 10k-18min log. Retain only if separate historical evidence exists** |
-| 13× | 2 / 5 | derived from 4h/18min in docs | **Historical/unresolved; NOT reproduced. Measured production-scale result is 4.09× (10k) / 2.42× (1k). Do not call the measured run 13×** |
+| 4h → 18 min | 6 (contradicted for current code) | HPC doc claims 4h; **§7b measured 1,000 plans = 29s on laptop, ≈5min extrapolated for 10,000** | **The current code does NOT take 4 hours locally. Unsupported by any measurement; do not use.** |
+| 13× | 6 (contradicted for current code) | derived from 4h/18min in docs; §7b local measurement | **Unsupported. Measured production-scale result is 4.09× (10k) / 2.42× (1k) cluster-serial-vs-parallel. Do not call the measured run 13×** |
 
-Not contradicted: the 2.42× (1,000 plans, fast 28-core serial baseline, 10 nodes) and the
-historical 13× (10,000 plans, slow local 4h baseline) are **different workloads and different
-serial baselines**, so they are not in conflict. But 13× lacks a raw before/after artifact.
+Now resolved: §7b's local laptop test (1,000 plans in 29 s) directly contradicts a 4-hour local
+runtime for the current code. The 13×/4h→18min figures either describe an earlier, heavier code
+configuration or a much slower historical machine — neither is preserved or verifiable in this
+repo — or they were never a real measurement. Either way, they are not defensible today.
 
 ### Bullet 2 — "Eliminated 30–40 min crashes; 100% verified outputs via retry + validation"
 
@@ -234,8 +261,9 @@ Ran locally (`docs/evidence/Mac_dashboard_benchmark.json`), 5 reps, plan 1:
   not extrapolate either to "13×".
 - 100 array tasks ran on **37–38 distinct physical nodes** (SLURM packed tasks); this is NOT
   "100 nodes" and NOT "400+ nodes".
-- No raw log exists for the historical "4 hours" local baseline or a historical "18 minutes"
-  run; no dashboard load-time (>10 s) measurement; no crash incident log.
+- The historical "4 hours" local baseline is now directly contradicted (§7b: current code = 29 s
+  for 1,000 plans on a laptop); no historical "18 minutes" run log; no dashboard load-time
+  (>10 s) measurement; no crash incident log.
 - `sinfo` capture showed only the account's 28-core partitions (156 nodes) with GPU partitions
   DOWN — a subset of the full published cluster, not evidence of total cluster size.
 
@@ -272,10 +300,11 @@ Ran locally (`docs/evidence/Mac_dashboard_benchmark.json`), 5 reps, plan 1:
   overhead is amortized better than at 1,000 plans on one node, which is exactly why the 10k
   speedup (4.09×) exceeds the 1k speedup (2.42×). It's an Amdahl's-law story, and I can show the
   scaling curve."
-- On the resume's 13× / 4h→18min: "That's a historical figure from my earlier project notes whose
-  serial baseline was a laptop-class machine; I don't have the raw before/after log, so I don't
-  present it as measured. My reproduced, evidence-backed number is 4.09× cluster-serial vs
-  cluster-parallel at 10k."
+- On the resume's 13× / 4h→18min: "I went back and actually timed the local generation on my own
+  laptop to check that figure — 1,000 plans ran in 29 seconds, which extrapolates to about
+  5 minutes for 10,000, not 4 hours. So that number doesn't hold up under the current code and
+  I don't use it. The evidence-backed number I present is 4.09× cluster-serial vs
+  cluster-parallel at 10k scale, which I can walk through with the raw sacct logs."
 - On 23,000 cores / 400+ nodes: "That's SeaWulf's published total capacity across hardware
   generations. My account saw the 156-node 28-core partitions; my 10k run used 37–38 nodes. I'm
   careful to separate cluster capacity from what I actually consumed, and task count from node
@@ -285,11 +314,11 @@ Ran locally (`docs/evidence/Mac_dashboard_benchmark.json`), 5 reps, plan 1:
 
 1. ~~Run the full 100-task, 10,000-plan production array~~ **DONE** — see §7a
    (`bench10k/`): 4.09×, 617s→151s, 37–38 nodes, 300/300 tasks, 0 failures.
-2. **13× — PENDING local-laptop timing.** Time the original local serial path on the machine that
-   produced "4 hours" using `experiments/local_serial_benchmark.sh` (see
-   `experiments/LOCAL_BASELINE.md`). This is the ONLY missing evidence for the 13× claim; it
-   cannot come from the cluster. Until that raw log exists in `docs/evidence/local/`, 13× stays
-   **historical/unresolved** and the defensible measured number is **4.09×** (§7a).
+2. ~~13× — PENDING local-laptop timing~~ **DONE (§7b).** Laptop measured: 1,000 plans in 29 s,
+   ≈5 min extrapolated for 10,000 — the current code does NOT reproduce a 4-hour local baseline.
+   13× is unsupported by any current measurement. The only remaining way to defend it would be to
+   recover and time the *original slower machine / earlier code configuration*, which is not
+   preserved in the repo. The defensible measured number is **4.09×** (§7a).
 3. Add a **dashboard load-time harness** (cold vs warm cache, N reps) → replaces "10s → <1s".
 4. Count **polygon components** after dissolve (`.explode()`) → confirm the real shape count vs
    "~50"; likely it's 3 dissolved districts made of multiple polygon parts.
@@ -306,7 +335,7 @@ Ran locally (`docs/evidence/Mac_dashboard_benchmark.json`), 5 reps, plan 1:
 | **4.09× speedup (617s→151s)** | 1 (reproduced) | `bench10k/` sacct 70002/70115/70216 + 70011/70116/70217 | High | **10,000 plans, 37–38 nodes, cluster-serial baseline** | "4.09× (10m17s→2m31s) across 37–38 nodes, 3 reps" | — |
 | 2.42× speedup (87s→36s) | 1 (reproduced) | sacct 69962–69986 | High | 1,000 plans, 10 nodes | keep as secondary/smaller-scale result | — |
 | 10,000+ simulations | **1 (reproduced)** | `bench10k/` — 3 reps × 10,000 plans, 300/300 tasks | High | measured production scale | "10,000-plan runs" — supported | — |
-| 4h → 18min / 13× | 2 / 5 (historical, unresolved) | HPC doc, README only | Low | historical, laptop serial baseline | omit as measured; retain only if separate historical log produced | raw local-4h + historical-18min logs |
+| 4h → 18min / 13× | **6 (contradicted)** | HPC doc/README claim vs §7b measured local 1,000 plans=29s (≈5min extrapolated/10k) | High (contradiction) | current code, this laptop | **REMOVE** — use 4.09× instead | n/a — would require an unrecoverable older machine/code state |
 | 23,000 cores | 3 (official capacity) | project docs citing SeaWulf | Med | cluster capacity, NOT usage | "on SeaWulf (~23,000-core cluster)" only as capacity | independent SBU spec page |
 | 400+ nodes | 3 (capacity) vs measured 37–38 | HPC doc vs `distinct_nodes_*` | Med | capacity ≠ usage | do NOT claim as usage; measured usage = 37–38 nodes | — |
 | 100% verified outputs | 1 (reproduced) | 300/300 COMPLETED + 3/3 serial; OUTPUT_INVENTORY 1000/1000 | High | 10k benchmark | "100% verified across three 10,000-plan jobs + 300 array tasks, 0 failures" | — |
@@ -347,9 +376,6 @@ packed onto nodes — not 100 nodes). The speedup is bounded by a ~30 s fixed pe
 
 ### 19c. Claims that remain HISTORICAL / UNRESOLVED (not reproduced, not disproven)
 
-- **13× and 4 hours → 18 minutes** — appear only in project docs (`README.md`,
-  `docs/notes/HPC_SEAWULF_EXECUTION.md`); no raw local-4h or historical-18min log. Different scope
-  (laptop serial baseline) from the reproduced 4.09×. Retain only with separate historical evidence.
 - **30–40 minute batch crashes** — no crash/incident log anywhere in the repo.
 - **"Unblocked downstream research teams"** — no project record or dependency doc in the repo.
 - **Dashboard ">10 s → <1 s"** — the >10 s starting point was never measured; sub-second only via
@@ -361,6 +387,10 @@ packed onto nodes — not 100 nodes). The speedup is bounded by a ~30 s fixed pe
 
 - **"~50 shapes"** — measured dissolve output is **3 records / 4 polygon components**
   (`Mac_dashboard_benchmark.json`). There is no interpretation yielding ~50. Remove it.
+- **"13× / 4 hours → 18 minutes"** — the local-laptop test (§7b) measured 1,000 plans in **29 s**
+  on the current code (extrapolates to ≈5 min for 10,000), directly contradicting a 4-hour local
+  runtime. This was previously unresolved; it is now resolved as **contradicted for the current
+  code**. Remove it; use the measured **4.09×** (10k, cluster-serial-vs-parallel) instead.
 
 ### 19e. Claims now FULLY REPRODUCED (Category 1)
 

@@ -74,12 +74,15 @@ PLAN_COUNT=$(find "$RUN_OUT" -maxdepth 1 -name 'plan_*.json' | wc -l | tr -d ' '
   echo "----- derived (see LOCAL_BASELINE.md for the formula) -----"
   echo "CLUSTER_PARALLEL_10K_MEDIAN_SECONDS=151"
   if [ "$N" -eq 10000 ]; then
-    echo "SPEEDUP_VS_CLUSTER_PARALLEL=$(awk "BEGIN{printf \"%.2f\", $WALL/151}")x"
+    EXTRAP="$WALL"
   else
-    EXTRAP=$(awk "BEGIN{printf \"%.0f\", ($WALL-30)*(10000/$N)+30}")
+    # Fixed-overhead model: (wall-OH)*(10000/N)+OH, with OH=30s. If wall<=OH (fast machine),
+    # the model is invalid — fall back to a simple linear estimate wall*(10000/N).
+    EXTRAP=$(awk -v w="$WALL" -v n="$N" 'BEGIN{oh=30; e=(w>oh)?((w-oh)*(10000/n)+oh):(w*(10000/n)); printf "%.0f", e}')
     echo "EXTRAPOLATED_10K_SERIAL_SECONDS=$EXTRAP"
-    echo "EXTRAPOLATED_SPEEDUP_VS_CLUSTER_PARALLEL=$(awk "BEGIN{printf \"%.2f\", $EXTRAP/151}")x"
   fi
+  echo "SPEEDUP_VS_CLUSTER_PARALLEL_10K=$(awk -v e="$EXTRAP" 'BEGIN{printf "%.2f", e/151}')x"
+  echo "NOTE=laptop-serial vs cluster-parallel is cross-hardware; report the raw seconds, not just the ratio"
 } | tee -a "$LOG"
 
 echo
