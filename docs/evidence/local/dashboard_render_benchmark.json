@@ -1,0 +1,18 @@
+{
+  "host": "Mac (Apple Silicon, Darwin 25.5.0)",
+  "date": "2026-07-19",
+  "method": "folium.GeoJson + get_root().render(), server-side only (no browser)",
+  "hypothesis_1_50_shapes": {
+    "fra_dissolve": {"records": 3, "polygon_components": 4},
+    "baseline_14_district_dissolve": {"records": 14, "polygon_components": 16},
+    "verdict": "'~50 shapes' not supported under any interpretation; contradicted"
+  },
+  "hypothesis_2_render_time": {
+    "raw_2658_precincts_seconds": 5.74,
+    "raw_html_mb": 58.4,
+    "dissolved_16_components_seconds": 1.05,
+    "dissolved_html_mb": 7.1,
+    "speedup": "5.5x",
+    "note": "browser render of 58MB GeoJSON not measured; likely slower than server-side"
+  }
+}
